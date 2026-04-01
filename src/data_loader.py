@@ -2,265 +2,140 @@ import openpyxl
 import os
 
 
-def read_DAMEND_from_excel(file_path):
-    wb = openpyxl.load_workbook(file_path, data_only=True)
-    ws = wb.active
-    row_idx = 1
-    col_idx = 1
-    found = False
+def find_label(ws, label):
+    for r in range(1, ws.max_row + 1):
+        for c in range(1, ws.max_column + 1):
+            val = ws.cell(row=r, column=c).value
+            if val and label in str(val).upper():
+                return r, c
+    raise ValueError(f"{label} not found")
 
-    for row_idx in range(1, ws.max_row + 1):
-        for col_idx in range(1, ws.max_column + 1):
-            cell_value = ws.cell(row=row_idx, column=col_idx).value
-            if cell_value and "DAMEND" in str(cell_value).upper():
-                found = True
-                break
-        if found:
+
+def read_block(ws, start_row, start_col, is_vector=False):
+    data = []
+    row = start_row + 1
+    col_start = start_col + 1
+
+    while True:
+        col = col_start
+        row_data = []
+
+        cell_value = ws.cell(row=row, column=col).value
+
+        # Stop if first cell is empty
+        if cell_value is None:
             break
 
-    if not found:
-        print("DAMEND non trovato, esco")
-        exit()
+        while True:
+            cell_value = ws.cell(row=row, column=col).value
 
-    matrix_demand = []
-    list_row = []
-    row_idx += 1
-    col_idx += 1 
-    initial_col_idx = col_idx  # Store the initial column index for resetting
-    while True:
-        cell_value = ws.cell(row=row_idx, column=col_idx).value
-        if isinstance(cell_value, int) and cell_value > 0:
-            list_row.append(cell_value)
-            col_idx += 1
-        elif cell_value is None and col_idx != initial_col_idx:
-            row_idx += 1
-            col_idx = initial_col_idx  # Reset column index to the initial value
-            matrix_demand.append(list_row)  # Add an empty row to the matrix
-            list_row = []  # Reset the list for the next row
-            continue  # Continue to the next row
-        elif cell_value is None and col_idx == initial_col_idx:
-            break  # Stop reading if the first cell of the row is empty
+            if isinstance(cell_value, int) and cell_value > 0:
+                row_data.append(cell_value)
+                col += 1
+            else:
+                break
+
+        if is_vector:
+            data.append(row_data[0])
         else:
-            exit(1)
-    else:
-        exit(1)
+            data.append(row_data)
 
-    return matrix_demand
+        row += 1
 
+    return data
 
-
-def read_CAPACITY_from_excel(file_path):
-    wb = openpyxl.load_workbook(file_path, data_only=True)
-    ws = wb.active
-    row_idx = 1
-    col_idx = 1
-    found = False
+def read_penalty(ws):
+    found_capacity = False
+    found_empty = False
 
     for row_idx in range(1, ws.max_row + 1):
-        cell_value = ws.cell(row=row_idx, column=col_idx).value
+        cell_value = ws.cell(row=row_idx, column=1).value
+
+        # Find CAPACITY
         if cell_value and "CAPACITY" in str(cell_value).upper():
-            found = True
-            break
+            found_capacity = True
+            continue
 
-    if not found:
-        print("CAPACITY non trovata, esco")
-        exit()
+        # After CAPACITY
+        if found_capacity:
+            if cell_value is None:
+                found_empty = True
+                continue
 
-    matrix_capacity = []
-    list_row = []
-    row_idx += 1
-    col_idx += 1 
-    initial_col_idx = col_idx  # Store the initial column index for resetting
-    while True:
-        cell_value = ws.cell(row=row_idx, column=col_idx).value
-        if isinstance(cell_value, int) and cell_value > 0:
-            list_row.append(cell_value)
-            col_idx += 1
-        elif cell_value is None and col_idx != initial_col_idx:
-            row_idx += 1
-            col_idx = initial_col_idx  # Reset column index to the initial value
-            matrix_capacity.append(list_row)  # Add an empty row to the matrix
-            list_row = []  # Reset the list for the next row
-            continue  # Continue to the next row
-        elif cell_value is None and col_idx == initial_col_idx:
-            break  # Stop reading if the first cell of the row is empty
-        else:
-            exit(1)
-    else:
-        exit(1)
-    return matrix_capacity
+            if found_empty and isinstance(cell_value, int) and cell_value % 100 == 0:
+                return cell_value
 
-def read_COST_from_excel(file_path):
+    raise ValueError("Penalty not found")
+
+def read_from_excel(ws, label, is_vector=False):
+
+    r, c = find_label(ws, label)
+    return read_block(ws, r, c, is_vector)
+
+def pretty_print(name, data):
+    print(f"{name}:")
+    
+    if isinstance(data[0], list):  # matrix
+        for row in data:
+            print("  ", row)
+    else:  # vector
+        for i, val in enumerate(data, 1):
+            print("  ", val)    
+
+
+def get_data_from_file_excel(file_path):
     wb = openpyxl.load_workbook(file_path, data_only=True)
     ws = wb.active
-    row_idx = 1
-    col_idx = 1
-    found = False
+    all_instances = {}
 
-    for row_idx in range(1, ws.max_row + 1):
-        for col_idx in range(1, ws.max_column + 1):
-            cell_value = ws.cell(row=row_idx, column=col_idx).value
-            if cell_value and "COST" in str(cell_value).upper():
-                found = True
-                break
-        if found:
-            break
+    for ws in wb.worksheets:
+        sheet_name = ws.title
 
-    if not found:
-        print("COST non trovato, esco")
-        exit()
+        # Keep only sheets with numeric names
+        if not sheet_name.isdigit():
+            continue
 
-    print("COST trovato, il programma continua")    
-    matrix_cost = []
-    list_row = []
-    row_idx += 1
-    col_idx += 1 
-    initial_col_idx = col_idx  # Store the initial column index for resetting
-    while True:
-        cell_value = ws.cell(row=row_idx, column=col_idx).value
-        if isinstance(cell_value, int) and cell_value > 0:
-            list_row.append(cell_value)
-            col_idx += 1
-        elif cell_value is None and col_idx != initial_col_idx:
-            row_idx += 1
-            col_idx = initial_col_idx  # Reset column index to the initial value
-            matrix_cost.append(list_row)  # Add an empty row to the matrix
-            list_row = []  # Reset the list for the next row
-            continue  # Continue to the next row
-        elif cell_value is None and col_idx == initial_col_idx:
-            break  # Stop reading if the first cell of the row is empty
-        else:
-            exit(1)
-    else:
-        exit(1)
-    return matrix_cost
+        sheet_name = ws.title
+        print(f"Processing sheet: {sheet_name}")
+        damend = read_from_excel(ws, "DAMEND")
+        capacity = read_from_excel(ws, "CAPACITY")
+        cost = read_from_excel(ws, "COST")
+        price = read_from_excel(ws, "PRICE")
+        revenue = read_from_excel(ws, "REVENUE", is_vector=True)
+        penalty = read_penalty(ws)
 
-
-def read_PRICE_from_excel(file_path):
-    wb = openpyxl.load_workbook(file_path, data_only=True)
-    ws = wb.active
-    row_idx = 1
-    col_idx = 1
-    found = False
-
-    for row_idx in range(1, ws.max_row + 1):
-        for col_idx in range(1, ws.max_column + 1):
-            cell_value = ws.cell(row=row_idx, column=col_idx).value
-            if cell_value and "PRICE" in str(cell_value).upper():
-                found = True
-                break
-        if found:
-            break
-
-    if not found:
-        print("PRICE non trovato, esco")
-        exit()
-
-    matrix_price = []
-    list_row = []
-    row_idx += 1
-    col_idx += 1 
-    initial_col_idx = col_idx  # Store the initial column index for resetting
-    while True:
-        cell_value = ws.cell(row=row_idx, column=col_idx).value
-        if isinstance(cell_value, int) and cell_value > 0:
-            list_row.append(cell_value)
-            col_idx += 1
-        elif cell_value is None and col_idx != initial_col_idx:
-            row_idx += 1
-            col_idx = initial_col_idx  # Reset column index to the initial value
-            matrix_price.append(list_row)  # Add an empty row to the matrix
-            list_row = []  # Reset the list for the next row
-            continue  # Continue to the next row
-        elif cell_value is None and col_idx == initial_col_idx:
-            break  # Stop reading if the first cell of the row is empty
-        else:
-            exit(1)
-    else:
-        exit(1)
-    return matrix_price
-
-def read_REVENUE_from_excel(file_path):
-    wb = openpyxl.load_workbook(file_path, data_only=True)
-    ws = wb.active
-    row_idx = 1
-    col_idx = 1
-    found = False
-
-    for row_idx in range(1, ws.max_row + 1):
-        for col_idx in range(1, ws.max_column + 1):
-            cell_value = ws.cell(row=row_idx, column=col_idx).value
-            if cell_value and "REVENUE" in str(cell_value).upper():
-                found = True
-                break
-        if found:
-            break
-
-    if not found:
-        print("REVENUE non trovato, esco")
-        exit()
-
-    matrix_revenue = []
-    list_row = []
-    row_idx += 1
-    col_idx += 1 
-    initial_col_idx = col_idx  # Store the initial column index for resetting
-    while True:
-        cell_value = ws.cell(row=row_idx, column=col_idx).value
-        if isinstance(cell_value, int) and cell_value > 0:
-            list_row.append(cell_value)
-            col_idx += 1
-        elif cell_value is None and col_idx != initial_col_idx:
-            row_idx += 1
-            col_idx = initial_col_idx  # Reset column index to the initial value
-            matrix_revenue.append(list_row)  # Add an empty row to the matrix
-            list_row = []  # Reset the list for the next row
-            continue  # Continue to the next row
-        elif cell_value is None and col_idx == initial_col_idx:
-            break  # Stop reading if the first cell of the row is empty
-        else:
-            exit(1)
-    else:
-        exit(1)
-    return matrix_revenue
-
-
+        all_instances[sheet_name] = {
+            "damend": damend,
+            "capacity": capacity,
+            "cost": cost,
+            "price": price,
+            "revenue": revenue,
+            "penalty": penalty
+        }
+    return all_instances
 
 if __name__ == "__main__":
-    # File path
-    file_path = os.path.join("..", "quarantine_hotel_instances", "1.xlsx")
-    
-    matrix = read_DAMEND_from_excel(file_path)
-    print ("DAMEND Matrix:")
-    for row in matrix:
-        print(row)
 
-    print("\n\n")
+    all_files_data = {}
 
-    matrix_capacity = read_CAPACITY_from_excel(file_path)
-    print ("CAPACITY Matrix:")
-    for row in matrix_capacity:
-        print(row)
+    for i in range(1, 17):
+        file_name = f"{i}.xlsx"
+        file_path = os.path.join("..", "quarantine_hotel_instances", file_name)
 
-    print("\n\n")
+        if not os.path.exists(file_path):
+            print(f"File {file_name} non trovato, salto")
+            continue
 
-    matrix_cost = read_COST_from_excel(file_path)
-    print ("COST Matrix:")
-    for row in matrix_cost:
-        print(row)
+        print(f"\n=== Processing {file_name} ===")
 
-    print("\n\n")
+        instances = get_data_from_file_excel(file_path)
+        all_files_data[file_name] = instances
 
-    matrix_price = read_PRICE_from_excel(file_path)
-    print ("PRICE Matrix:")
-    for row in matrix_price:
-        print(row)
-
-    print("\n\n")
-
-    matrix_revenue = read_REVENUE_from_excel(file_path)
-    print ("REVENUE Matrix:")
-    for row in matrix_revenue:
-        print(row)
-
-    print("\n\n")
+        for sheet_name, data in instances.items():
+            print(f"\n--- {file_name} | Sheet {sheet_name} ---")
+            pretty_print("DAMEND", data["damend"])
+            pretty_print("CAPACITY", data["capacity"])
+            pretty_print("COST", data["cost"])
+            pretty_print("PRICE", data["price"])
+            pretty_print("REVENUE", data["revenue"])
+            pretty_print("PENALTY", [data["penalty"]])
