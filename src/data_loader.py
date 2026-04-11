@@ -137,18 +137,12 @@ def get_data_from_file_excel(file_path, sheet_index=None):
     return all_instances
 
 def validate_dimensions(Q, C, c, p, R):
-    # print(f"DEBUG Dimensioni:")
-    # print(f"  Hotel (I): {len(R)}")
-    # print(f"  Nodi Domanda (J): {len(Q)}")
-    # print(f"  Tipi Stanza (K): {len(Q[0]) if Q else 0}")
-    # print(f"  Matrice Costi (c): {len(c)} righe, {len(c[0]) if c else 0} colonne")
-    # print(f"  Matrice Prezzi (p): {len(p)} righe, {len(p[0]) if p else 0} colonne")
-    
+    errors = []
+
     # Number of hotels (I)
     I = len(R)
 
-    errors = []
-
+    # Basic row checks
     if len(c) != I:
         errors.append(f"COST rows ({len(c)}) != number of hotels ({I})")
 
@@ -158,23 +152,38 @@ def validate_dimensions(Q, C, c, p, R):
     if len(C) != I:
         errors.append(f"CAPACITY rows ({len(C)}) != number of hotels ({I})")
 
-    # Optional extra checks (very useful)
+    # DEMAND must not be empty
     if len(Q) == 0:
         errors.append("DEMAND matrix is empty")
         return False
-    else:
-        K = len(Q[0])
-        for i, row in enumerate(c):
-            if len(row) != K:
-                errors.append(f"COST row {i} has {len(row)} columns, expected {K}")
-        for i, row in enumerate(p):
-            if len(row) != K:
-                errors.append(f"PRICE row {i} has {len(row)} columns, expected {K}")
 
+    # Dimensions derived from DEMAND
+    A = len(Q)        # number of airports
+    U = len(Q[0])     # number of users
+
+    # Check COST: hotel × airports
+    for i, row in enumerate(c):
+        if len(row) != A:
+            errors.append(f"COST row {i} has {len(row)} columns, expected {A}")
+
+    # Check CAPACITY: hotel × room_types
+    T = len(C[0])     # number of room types
+
+    for i, row in enumerate(C):
+        if len(row) != T:
+            errors.append(f"CAPACITY row {i} has {len(row)} columns, expected {T}")
+
+    # Check PRICE: hotel × room_types
+    for i, row in enumerate(p):
+        if len(row) != T:
+            errors.append(f"PRICE row {i} has {len(row)} columns, expected {T}")
+
+    # Final result
     if errors:
+        for error in errors:
+            print(f"  - {error}")
         return False
 
-    print("Validation OK: dimensions are consistent.")
     return True
 
 
@@ -213,61 +222,53 @@ if __name__ == "__main__":
 
     all_files_data = {}
 
-    for i in range(1, 17):
-        file_name = f"{i}.xlsx"
-        file_path = os.path.join("..", "quarantine_hotel_instances", file_name)
+    for i in range(1, 3):
+        for j in range(0, 3):
+            file_name = f"{i}.xlsx"
+            file_path = os.path.join("..", "quarantine_hotel_instances", file_name)
 
-        if not os.path.exists(file_path):
-            print(f"File {file_name} non trovato, salto")
-            continue
+            if not os.path.exists(file_path):
+                print(f"File {file_name} not found, skipping...")
+                continue
 
-        print(f"\n=== Processing {file_name} ===")
 
-        instances = get_data_from_file_excel(file_path)
-        all_files_data[file_name] = instances
+            print(f"\n=== Processing {file_name} ===")
+            print(f"Loading data from sheet {j}...")
 
-    file_name = f"1.xlsx"
-    file_path = os.path.join("..", "quarantine_hotel_instances", file_name)
+            data = get_data_from_file_excel(file_path, j)
 
-    if not os.path.exists(file_path):
-        print(f"File {file_name} not found")
-        exit(1)
+            # --- PULIZIA E VALIDAZIONE DATI ---
+            # Rimuoviamo righe vuote e assicuriamoci che siano liste di liste
+            Q = [row for row in data["demand"] if len(row) > 0]
+            C = [row for row in data["capacity"] if len(row) > 0]
+            c = [row for row in data["cost"] if len(row) > 0]
+            p = [row for row in data["price"] if len(row) > 0]
+            R = [val for val in data["revenue"] if val is not None]
+            gamma = data["penalty"]
 
-    print(f"\n=== Processing {file_name} ===")
+            # print(f"For file {file_name}, sheet {j}: {data['revenue']}")
+            
+            if not validate_dimensions(
+                        data["demand"],
+                        data["capacity"],
+                        data["cost"],
+                        data["price"],
+                        data["revenue"] 
+                    ):
+                print("Error: Dimension validation failed. Please check the input data.")
 
-    data = get_data_from_file_excel(file_path, 0)
+            pretty_print("DEMAND", Q)
+            pretty_print("CAPACITY", C)
+            pretty_print("COST", c)
+            pretty_print("PRICE", p)
+            pretty_print("REVENUE", R)
+            pretty_print("PENALTY", [gamma])
 
-    # --- PULIZIA E VALIDAZIONE DATI ---
-    # Rimuoviamo righe vuote e assicuriamoci che siano liste di liste
-    Q = [row for row in data["demand"] if len(row) > 0]
-    C = [row for row in data["capacity"] if len(row) > 0]
-    c = [row for row in data["cost"] if len(row) > 0]
-    p = [row for row in data["price"] if len(row) > 0]
-    R = [val for val in data["revenue"] if val is not None]
-    gamma = data["penalty"]
-    
-    if not validate_dimensions(
-                data["demand"],
-                data["capacity"],
-                data["cost"],
-                data["price"],
-                data["revenue"] 
-            ):
-        print("Error: Dimension validation failed. Please check the input data.")
-        exit(1)
-
-    pretty_print("DEMAND", Q)
-    pretty_print("CAPACITY", C)
-    pretty_print("COST", c)
-    pretty_print("PRICE", p)
-    pretty_print("REVENUE", R)
-    pretty_print("PENALTY", [gamma])
-
-    # Debug delle dimensioni (Fondamentale per l'IndexError)
-    print(f"DEBUG Dimensioni:")
-    print(f"  Hotel (I): {len(R)}")
-    print(f"  Nodi Domanda (J): {len(Q)}")
-    print(f"  Tipi Stanza (K): {len(Q[0]) if Q else 0}")
-    print(f"  Matrice Costi (c): {len(c)} righe, {len(c[0]) if c else 0} colonne")
-    print(f"  Matrice Prezzi (p): {len(p)} righe, {len(p[0]) if p else 0} colonne")
+            # # Debug delle dimensioni (Fondamentale per l'IndexError)
+            # print(f"DEBUG Dimensioni:")
+            # print(f"  Hotel (I): {len(R)}")
+            # print(f"  Nodi Domanda (J): {len(Q)}")
+            # print(f"  Tipi Stanza (K): {len(Q[0]) if Q else 0}")
+            # print(f"  Matrice Costi (c): {len(c)} righe, {len(c[0]) if c else 0} colonne")
+            # print(f"  Matrice Prezzi (p): {len(p)} righe, {len(p[0]) if p else 0} colonne")
 
