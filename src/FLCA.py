@@ -5,11 +5,9 @@ from gurobipy import GRB
 import os
 import csv
 import time
-import matplotlib.pyplot as plt
-import pandas as pd
 
 from data_loader import get_data_from_file_excel, validate_dimensions
-
+from utils import generate_plots_flca
 
 def debug_solution(model, x, y, z, Q, C):
     I = range(len(C))
@@ -234,43 +232,6 @@ def run_instance(file_idx, sheet_idx, output_file="results_flca.csv"):
             round(contract_cost, 2)
         ])
 
-# ---------------------------------------------------------
-# 3. Generate plots
-# ---------------------------------------------------------
-def generate_plots_flca(csv_file="results_flca.csv"):
-    df = pd.read_csv(csv_file)
-
-    # Plot 1: solve time
-    plt.figure()
-    plt.plot(df["file"], df["time_sec"], marker="o")
-    plt.xlabel("File")
-    plt.ylabel("Solve time (seconds)")
-    plt.title("FLCA Scalability: Solve Time")
-    plt.grid(True)
-    plt.savefig("flca_scalability_time.png")
-
-    # Plot 2: objective
-    plt.figure()
-    plt.plot(df["file"], df["objective"], marker="o", color="green")
-    plt.xlabel("File")
-    plt.ylabel("Objective value")
-    plt.title("FLCA Scalability: Objective Value")
-    plt.grid(True)
-    plt.savefig("flca_scalability_objective.png")
-
-    # Plot 3: cost breakdown
-    plt.figure()
-    plt.plot(df["file"], df["assignment_cost"], label="Assignment cost")
-    plt.plot(df["file"], df["misplacement_cost"], label="Misplacement cost")
-    plt.plot(df["file"], df["contract_cost"], label="Contract cost")
-    plt.xlabel("File")
-    plt.ylabel("Cost")
-    plt.title("FLCA Cost Breakdown")
-    plt.legend()
-    plt.grid(True)
-    plt.savefig("flca_cost_breakdown.png")
-
-
 if __name__ == "__main__":
     results_file = "flca_results.csv"
 
@@ -278,11 +239,8 @@ if __name__ == "__main__":
         os.remove(results_file)
 
     # 16 file, 3 fogli numerici per file: indici 0,1,2
-    for file_idx in range(1, 17):
-        for sheet_idx in range(0, 3):
+    for file_idx in range(1, 2):
+        for sheet_idx in range(0, 1):
             run_instance(file_idx, sheet_idx, results_file)
 
     generate_plots_flca(results_file)
-
-    print("\nAll instances processed. Results saved to flca_results.csv")
-    print("Plots saved as PNG files.")
