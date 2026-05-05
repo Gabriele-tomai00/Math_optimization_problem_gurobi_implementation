@@ -16,10 +16,10 @@ Each sheet is organized as follows:
 - REVENUE: a list (one entry per hotel)
 - PENALTY: single value, different for each Excel sheet
 
-### Description
+<!-- ### Description
 
 
-### Structure
+### Structure -->
 
 
 
