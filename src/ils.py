@@ -1,7 +1,5 @@
 # ils.py
 
-import gurobipy as gp
-from gurobipy import GRB
 import random
 import copy
 import os
@@ -11,92 +9,150 @@ import csv
 import gurobipy as gp
 from gurobipy import GRB
 from data_loader import get_data_from_file_excel, validate_dimensions
+from utils import generate_plots_ils, format_time
+
 
 def solve_lower_level(x_fixed, y_fixed, Q, C, c, p, R, gamma):
+    """Solve the Lower Level problem for given fixed x and y.
+    Given a configuration of open hotels (x_fixed) and their assigned nodes (y_fixed),
+    this function computes the worst-case objective value for the follower's response.
+    Returns the objective value and cost breakdown.
+    """
     I, J, K = range(len(R)), range(len(Q)), range(len(Q[0]))
     model = gp.Model("LowerLevel_WorstCase")
-    model.Params.OutputFlag = 0 
+    model.Params.OutputFlag = 0
 
+    # flux: how many people from node j of room type k are assigned to hotel i in a room of type w
     z = model.addVars(I, J, K, K, lb=0, ub=1, vtype=GRB.CONTINUOUS, name="z")
-    r = model.addVars(J, K, vtype=GRB.BINARY, name="r")
-    u = model.addVars(J, K, vtype=GRB.CONTINUOUS, name="u")
-    v = model.addVars(J, K, K, vtype=GRB.BINARY, name="v")
-    T = model.addVars(I, lb=0, vtype=GRB.CONTINUOUS, name="T")
-    delta = model.addVars(I, vtype=GRB.BINARY, name="delta")
-    B = model.addVars(I, J, K, lb=0, vtype=GRB.CONTINUOUS, name="B")
 
+    r     = model.addVars(J, K,    vtype=GRB.BINARY,     name="r")
+    u     = model.addVars(J, K,    vtype=GRB.CONTINUOUS, name="u")
+    v     = model.addVars(J, K, K, vtype=GRB.BINARY,     name="v")
+    T     = model.addVars(I,       lb=0, vtype=GRB.CONTINUOUS, name="T")
+    delta = model.addVars(I,       vtype=GRB.BINARY,     name="delta")
+    B     = model.addVars(I, J, K, lb=0, vtype=GRB.CONTINUOUS, name="B")
+
+    # --- Constraint (5): assign all demand ---
     for j in J:
         for k in K:
-            model.addConstr(gp.quicksum(z[i,j,k,w] for i in I for w in K) == 1)
-    
+            model.addConstr(
+                gp.quicksum(z[i, j, k, w] for i in I for w in K) == 1,
+                name=f"assign_all[{j},{k}]"
+            )
+
+    # --- Constraint (6): capacity constraints ---
     for i in I:
         for j in J:
             for w in K:
-                model.addConstr(gp.quicksum(Q[j][k]*z[i,j,k,w] for k in K) <= C[i][w] * y_fixed[i,j])
+                model.addConstr(
+                    gp.quicksum(Q[j][k] * z[i, j, k, w] for k in K)
+                    <= C[i][w] * y_fixed[i, j],
+                    name=f"cap[{i},{j},{w}]"
+                )
 
+    # --- UE Conditions (Eq. 24-28) ---
     for j in J:
         for k in K:
-            # CORRETTO: aggiunto "if w != k"
-            model.addConstr(gp.quicksum(z[i,j,k,w] for i in I for w in K if w != k) <= r[j,k])
-            model.addConstr(gp.quicksum(B[i,j,k] for i in I) <= sum(C[i][k] for i in I) * (1 - r[j,k]))
+            # [Eq. 24] Misplacement indicator: r=1 if guests are assigned to room type w != k
+            model.addConstr(
+                gp.quicksum(z[i, j, k, w] for i in I for w in K if w != k) <= r[j, k]
+            )
+            # [Eq. 25] Complementarity: misplacement only if no residual capacity
+            model.addConstr(
+                gp.quicksum(B[i, j, k] for i in I) <= sum(C[i][k] for i in I) * (1 - r[j, k])
+            )
             for i in I:
-                model.addConstr(C[i][k]*y_fixed[i,j] - gp.quicksum(Q[j][w]*z[i,j,w,k] for w in K) <= B[i,j,k])
+                # [Eq. 26] Definition of residual capacity B for room type k in hotel i
+                model.addConstr(
+                    C[i][k] * y_fixed[i, j] - gp.quicksum(Q[j][w] * z[i, j, w, k] for w in K)
+                    <= B[i, j, k]
+                )
 
     for j in J:
         for k in K:
             for w in K:
                 if k != w:
-                    model.addConstr(u[j,k] - u[j,w] <= (1 - v[j,k,w]) * len(K) - 1)
-                    model.addConstr(gp.quicksum(z[i,j,k,w] for i in I) <= v[j,k,w])
+                    # [Eq. 27] Elimination of misplacement loops (MTZ-based ordering)
+                    model.addConstr(u[j, k] - u[j, w] <= (1 - v[j, k, w]) * len(K) - 1)
+                    # [Eq. 28] Linking physical assignment z to logical precedence v
+                    model.addConstr(gp.quicksum(z[i, j, k, w] for i in I) <= v[j, k, w])
 
+    # --- Contracting cost linearization (Eq. 29-32) ---
     for i in I:
-        revenue_expr = gp.quicksum(p[i][w]*Q[j][k]*z[i,j,k,w] for j in J for k in K for w in K)
-        model.addConstr(T[i] <= R[i] - revenue_expr + delta[i] * (sum(C[i][w]*p[i][w] for w in K) - R[i]))
-        model.addConstr(T[i] >= R[i]*x_fixed[i] - revenue_expr)
-        model.addConstr(T[i] <= R[i]*x_fixed[i])
+        revenue_expr = gp.quicksum(p[i][w] * Q[j][k] * z[i, j, k, w]
+                                   for j in J for k in K for w in K)
+        max_rev = sum(C[i][w] * p[i][w] for w in K)
+
+        # [Eq. 29] Upper bound for T_i
+        model.addConstr(T[i] <= R[i] - revenue_expr + delta[i] * (max_rev - R[i]))
+        # [Eq. 30] Lower bound: T_i must cover the shortfall
+        model.addConstr(T[i] >= R[i] * x_fixed[i] - revenue_expr)
+        # [Eq. 31] T_i exists only if hotel i is open
+        model.addConstr(T[i] <= R[i] * x_fixed[i])
+        # [Eq. 32] T_i is 0 if target is met (delta_i=1)
         model.addConstr(T[i] <= (1 - delta[i]) * R[i])
 
-    obj = gp.quicksum(T[i] for i in I) + \
-          gp.quicksum(c[i][j]*Q[j][k]*z[i,j,k,w] for i in I for j in J for k in K for w in K) + \
-          gp.quicksum(gamma*Q[j][k]*z[i,j,k,w] for i in I for j in J for k in K for w in K if w != k)
-    
+    # [Eq. 21] Objective: maximize total worst-case cost
+    obj = (
+        gp.quicksum(T[i] for i in I)
+        + gp.quicksum(c[i][j] * Q[j][k] * z[i, j, k, w]
+                      for i in I for j in J for k in K for w in K)
+        + gp.quicksum(gamma * Q[j][k] * z[i, j, k, w]
+                      for i in I for j in J for k in K for w in K if w != k)
+    )
     model.setObjective(obj, GRB.MAXIMIZE)
     model.optimize()
-    
+
     if model.status == GRB.OPTIMAL:
-            # Calcolo breakdown
-            contract_cost = sum(T[i].X for i in I)
-            assign_cost = sum(c[i][j]*Q[j][k]*z[i,j,k,w].X for i in I for j in J for k in K for w in K)
-            misplace_cost = sum(gamma*Q[j][k]*z[i,j,k,w].X for i in I for j in J for k in K for w in K if w != k)
-            
-            return model.ObjVal, contract_cost, assign_cost, misplace_cost
+        contract_cost = sum(T[i].X for i in I)
+        assign_cost   = sum(c[i][j] * Q[j][k] * z[i, j, k, w].X
+                            for i in I for j in J for k in K for w in K)
+        misplace_cost = sum(gamma * Q[j][k] * z[i, j, k, w].X
+                            for i in I for j in J for k in K for w in K if w != k)
+        return model.ObjVal, contract_cost, assign_cost, misplace_cost
+
     return float('inf'), 0, 0, 0
 
-# --- 1. INITIAL SOLUTION ---
+
 def generate_initial_solution(Q, C, R):
-    """Genera la soluzione iniziale minimizzando gli hotel aperti (Eq. 35)."""
+    """Generate the initial solution by minimizing the number of open hotels (Eq. 35).
+    Q: demand, C: capacity, R: revenue target. Returns (x_dict, y_dict).
+    """
     I, J, K = range(len(R)), range(len(Q)), range(len(Q[0]))
     model = gp.Model("Initial_Solution")
     model.Params.OutputFlag = 0
 
-    x = model.addVars(I, vtype=GRB.BINARY, name="x")
+    # Constraint (12): x and y must be binay
+    x = model.addVars(I,    vtype=GRB.BINARY, name="x")
     y = model.addVars(I, J, vtype=GRB.BINARY, name="y")
 
+    # Constraint (3): each open hotel is assigned to exactly one node
     for i in I:
-        model.addConstr(gp.quicksum(y[i, j] for j in J) == x[i])
-    for j in J:
         model.addConstr(
-            gp.quicksum(C[i][w] * y[i, j] for i in I for w in K) >= sum(Q[j][k] for k in K)
+            gp.quicksum(y[i, j] for j in J) == x[i],
+            name=f"alloc_only_if_open[{i}]"
         )
 
+    # Constraint (4): total capacity assigned to node j must cover its demand
+    for j in J:
+        model.addConstr(
+            gp.quicksum(C[i][w] * y[i, j] for i in I for w in K)
+            >= gp.quicksum(Q[j][k] for k in K),
+            name=f"capacity_node[{j}]"
+        )
+
+    # (Eq. 35) minimizing the number of open hotels
     model.setObjective(gp.quicksum(x[i] for i in I), GRB.MINIMIZE)
     model.optimize()
 
-    return {i: round(x[i].X) for i in I}, { (i, j): round(y[i, j].X) for i in I for j in J }
+    return (
+        {i: round(x[i].X) for i in I},
+        {(i, j): round(y[i, j].X) for i in I for j in J}
+    )
 
-# --- UTILS DI FATTIBILITA' ---
+
 def is_feasible(x_dict, y_dict, Q, C):
-    """Verifica i vincoli (3) e (4) per una data configurazione."""
+    """Verify constraints (3) and (4) for a given configuration."""
     I, J, K = range(len(C)), range(len(Q)), range(len(Q[0]))
     for i in I:
         if sum(y_dict[i, j] for j in J) != x_dict[i]:
@@ -108,35 +164,41 @@ def is_feasible(x_dict, y_dict, Q, C):
             return False
     return True
 
-# --- 2. LOCAL SEARCH ---
+
 def local_search(s, Q, C, c, p, R, gamma):
-    """Esegue operazioni di SWAP sui nodi assegnati agli hotel aperti."""
+    """Execute swap operations on nodes assigned to open hotels.
+    Returns the locally optimal (x, y) and its objective value,
+    avoiding a redundant lower-level solve in the caller.
+    """
     I, J = range(len(R)), range(len(Q))
-    current_x, current_y = copy.deepcopy(s[0]), copy.deepcopy(s[1])
-    best_local_y = copy.deepcopy(current_y)
-    best_local_Z, _, _, _ = solve_lower_level(current_x, best_local_y, Q, C, c, p, R, gamma)
+    current_x   = copy.deepcopy(s[0])
+    best_local_y = copy.deepcopy(s[1])
+
+    best_local_Z, _, _, _ = solve_lower_level(
+        current_x, best_local_y, Q, C, c, p, R, gamma
+    )
 
     while True:
         improved = False
-        neighbors = []
-        
-        # Genera tutti i possibili swap tra due hotel allocati a nodi diversi
+
+        # Generate all pairwise swaps of node assignments between open hotels
         open_hotels = [i for i in I if current_x[i] == 1]
+        neighbors   = []
+
         for idx1 in range(len(open_hotels)):
             for idx2 in range(idx1 + 1, len(open_hotels)):
                 i1, i2 = open_hotels[idx1], open_hotels[idx2]
                 j1 = next((j for j in J if best_local_y[i1, j] == 1), None)
                 j2 = next((j for j in J if best_local_y[i2, j] == 1), None)
-                
+
                 if j1 is not None and j2 is not None and j1 != j2:
                     new_y = copy.deepcopy(best_local_y)
-                    # Swap
                     new_y[i1, j1], new_y[i1, j2] = 0, 1
                     new_y[i2, j2], new_y[i2, j1] = 0, 1
                     if is_feasible(current_x, new_y, Q, C):
                         neighbors.append(new_y)
 
-        # Valuta tutti i vicini
+        # Evaluate all neighbors and select the best one (steepest descent)
         best_neighbor_y = None
         best_neighbor_Z = float('inf')
 
@@ -146,7 +208,6 @@ def local_search(s, Q, C, c, p, R, gamma):
                 best_neighbor_Z = Z_val
                 best_neighbor_y = n_y
 
-        # Se il miglior vicino migliora l'ottimo locale, aggiorna e ripeti
         if best_neighbor_Z < best_local_Z:
             best_local_Z = best_neighbor_Z
             best_local_y = copy.deepcopy(best_neighbor_y)
@@ -155,129 +216,248 @@ def local_search(s, Q, C, c, p, R, gamma):
         if not improved:
             break
 
-    return current_x, best_local_y
+    return current_x, best_local_y, best_local_Z
 
-# --- 3. HIGH POINT PROBLEM (HPP) ---
+
 def solve_HPP(x_fixed, y_partial_fixed, Q, C, c, p, R, gamma):
-    """Risolve il problema HPP (rilassamento a singolo livello) per ottenere un Lower Bound."""
+    """Solve the HPP problem (single-level relaxation) to obtain a lower bound."""
     I, J, K = range(len(R)), range(len(Q)), range(len(Q[0]))
     model = gp.Model("HPP")
     model.Params.OutputFlag = 0
 
-    y = model.addVars(I, J, vtype=GRB.BINARY, name="y")
-    z = model.addVars(I, J, K, K, lb=0, ub=1, vtype=GRB.CONTINUOUS, name="z")
-    r = model.addVars(J, K, vtype=GRB.BINARY, name="r")
-    u = model.addVars(J, K, vtype=GRB.CONTINUOUS, name="u")
-    v = model.addVars(J, K, K, vtype=GRB.BINARY, name="v")
-    T = model.addVars(I, lb=0, vtype=GRB.CONTINUOUS, name="T")
-    delta = model.addVars(I, vtype=GRB.BINARY, name="delta")
-    B = model.addVars(I, J, K, lb=0, vtype=GRB.CONTINUOUS, name="B")
+    x     = model.addVars(I,                        vtype=GRB.BINARY,     name="x")
+    y     = model.addVars(I, J,                     vtype=GRB.BINARY,     name="y")
+    z     = model.addVars(I, J, K, K, lb=0, ub=1,   vtype=GRB.CONTINUOUS, name="z")
+    u     = model.addVars(J, K,                     vtype=GRB.CONTINUOUS, name="u")
+    T     = model.addVars(I,          lb=0,         vtype=GRB.CONTINUOUS, name="T")
+    r     = model.addVars(J, K,                     vtype=GRB.BINARY,     name="r")
+    v     = model.addVars(J, K, K,                  vtype=GRB.BINARY,     name="v")
+    delta = model.addVars(I,                        vtype=GRB.BINARY,     name="delta")
+    B     = model.addVars(I, J, K,    lb=0,         vtype=GRB.CONTINUOUS, name="B")
 
-    # Fissa variabili y parzialmente (per lo Stage 2 della perturbazione)
+    for i in I:
+        model.addConstr(x[i] == x_fixed[i])
+
     for (i, j), val in y_partial_fixed.items():
         if val is not None:
             model.addConstr(y[i, j] == val)
 
-    # Inserisci qui TUTTI i vincoli del Lower Level (3-6, 11-12, 24-34)
-    # (Ometto per brevità la riscrittura dei vincoli identici al Lower Level già visti prima,
-    # ma devi copiare la struttura del solve_lower_level sostituendo y_fixed con y)
+    # Constraint (3): each open hotel assigned to exactly one node
     for i in I:
-        model.addConstr(gp.quicksum(y[i, j] for j in J) == x_fixed[i])
-    for j in J:
-        model.addConstr(gp.quicksum(C[i][w] * y[i, j] for i in I for w in K) >= sum(Q[j][k] for k in K))
+        model.addConstr(
+            gp.quicksum(y[i, j] for j in J) == x[i],
+            name=f"alloc_only_if_open[{i}]"
+        )
 
-    # [INSERIRE QUI I VINCOLI SU Z, R, U, V, T, B, DELTA COME DA PAPER E LOWER LEVEL]
-    
-    # Obiettivo: MINIMIZZARE (Differenza chiave rispetto al Lower Level)
-    obj = gp.quicksum(T[i] for i in I) + \
-          gp.quicksum(c[i][j]*Q[j][k]*z[i,j,k,w] for i in I for j in J for k in K for w in K) + \
-          gp.quicksum(gamma*Q[j][k]*z[i,j,k,w] for i in I for j in J for k in K for w in K if w != k)
-    
+    # Constraint (4): capacity covers demand for each node
+    for j in J:
+        model.addConstr(
+            gp.quicksum(C[i][w] * y[i, j] for i in I for w in K)
+            >= gp.quicksum(Q[j][k] for k in K),
+            name=f"capacity_node[{j}]"
+        )
+
+    # Constraint (5): assign all demand
+    for j in J:
+        for k in K:
+            model.addConstr(
+                gp.quicksum(z[i, j, k, w] for i in I for w in K) == 1,
+                name=f"assign_all[{j},{k}]"
+            )
+
+    # Constraint (6): capacity per room type
+    for i in I:
+        for j in J:
+            for w in K:
+                model.addConstr(
+                    gp.quicksum(Q[j][k] * z[i, j, k, w] for k in K)
+                    <= C[i][w] * y[i, j],
+                    name=f"cap[{i},{j},{w}]"
+                )
+
+    # UE Conditions (Eq. 24-28)
+    for j in J:
+        for k in K:
+            model.addConstr(
+                gp.quicksum(z[i, j, k, w] for i in I for w in K if w != k) <= r[j, k]
+            )
+            model.addConstr(
+                gp.quicksum(B[i, j, k] for i in I)
+                <= sum(C[i][k] for i in I) * (1 - r[j, k])
+            )
+            for i in I:
+                model.addConstr(
+                    C[i][k] * y[i, j] - gp.quicksum(Q[j][w] * z[i, j, w, k] for w in K)
+                    <= B[i, j, k]
+                )
+
+    for j in J:
+        for k in K:
+            for w in K:
+                if k != w:
+                    model.addConstr(u[j, k] - u[j, w] <= (1 - v[j, k, w]) * len(K) - 1)
+                    model.addConstr(gp.quicksum(z[i, j, k, w] for i in I) <= v[j, k, w])
+
+    # Contracting cost constraints (Eq. 29-32)
+    for i in I:
+        actual_rev = gp.quicksum(p[i][w] * Q[j][k] * z[i, j, k, w]
+                                 for j in J for k in K for w in K)
+        max_rev = sum(C[i][w] * p[i][w] for w in K)
+
+        model.addConstr(T[i] <= R[i] - actual_rev + delta[i] * (max_rev - R[i]))
+        model.addConstr(T[i] >= R[i] * x[i] - actual_rev)   # was: x_fixed[i]
+        model.addConstr(T[i] <= R[i] * x[i])                 # was: x_fixed[i]
+        model.addConstr(T[i] <= (1 - delta[i]) * R[i])
+
+    # Objective: minimize (leader's perspective, lower bound on worst-case cost)
+    obj = (
+        gp.quicksum(T[i] for i in I)
+        + gp.quicksum(c[i][j] * Q[j][k] * z[i, j, k, w]
+                      for i in I for j in J for k in K for w in K)
+        + gp.quicksum(gamma * Q[j][k] * z[i, j, k, w]
+                      for i in I for j in J for k in K for w in K if w != k)
+    )
     model.setObjective(obj, GRB.MINIMIZE)
     model.optimize()
-    
+
     if model.status == GRB.OPTIMAL:
-        y_out = {(i,j): round(y[i,j].X) for i in I for j in J}
+        y_out = {(i, j): round(y[i, j].X) for i in I for j in J}
         return model.ObjVal, y_out
+
     return float('inf'), None
 
-# --- 4. PERTURBATION CORE ---
-def perturb(s_star, Q, C, c, p, R, gamma, Z_best, tau_hat_max=5):
-    """Esegue la perturbazione (Stage 1 e fall-back allo Stage 2)."""
-    I, J = range(len(R)), range(len(Q))
-    x_star, y_star = s_star
-    N_star = sum(x_star.values())
-    
-    for _ in range(tau_hat_max):
-        # i. Genera N casuale
-        N = random.choice([n for n in range(1, len(I)+1) if n != N_star])
-        x_hash = copy.deepcopy(x_star)
-        
-        # ii. Se N > N*
-        if N > N_star:
-            closed_hotels = [i for i in I if x_hash[i] == 0]
-            to_open = random.sample(closed_hotels, N - N_star)
-            for i in to_open: x_hash[i] = 1
-                
-        # iii. Se N < N*
-        elif N < N_star:
-            open_hotels = [i for i in I if x_hash[i] == 1]
-            to_close = random.sample(open_hotels, N_star - N)
-            for i in to_close: x_hash[i] = 0
-            # Gestione infeasibility qui (Semplificata: la demandiamo a HPP)
 
-        # Risolve HPP per vedere se è promising (Criterio di accettazione)
-        Z_hash, y_hash = solve_HPP(x_hash, {}, Q, C, c, p, R, gamma)
-        if Z_hash < Z_best:
-            return (x_hash, y_hash) # Promising!
+def random_allocate(x_dict, Q, C):
+    """Randomly assign each open hotel to one demand node (constraint 3),
+    attempting to satisfy the capacity constraint (constraint 4).
+    Returns y_dict if a feasible allocation is found, None otherwise.
+    """
+    I, J = range(len(x_dict)), range(len(Q))
+    open_hotels = [i for i in I if x_dict[i] == 1]
 
-    # --- STAGE 2 PERTURBATION ---
-    y_partial = copy.deepcopy(y_star)
-    keys_to_free = list(y_partial.keys())
-    random.shuffle(keys_to_free)
+    for _ in range(200):
+        y_candidate = {(i, j): 0 for i in I for j in J}
+        for i in open_hotels:
+            j = random.choice(list(J))
+            y_candidate[i, j] = 1
+        if is_feasible(x_dict, y_candidate, Q, C):
+            return y_candidate
 
-    for key in keys_to_free:
-        y_partial[key] = None # Libera la variabile
-        Z_hash, y_hash = solve_HPP(x_star, y_partial, Q, C, c, p, R, gamma)
-        if Z_hash < Z_best:
-            return (x_star, y_hash) # Promising trovato nello Stage 2
+    return None
 
-    return "GLOBAL_OPTIMUM" # Se tutto fallisce, l'HPP dimostra che siamo all'ottimo globale
 
-# --- ALGORITMO PRINCIPALE ILS ---
-def run_ils(Q, C, c, p, R, gamma, tau_max=20):
-    s_0 = generate_initial_solution(Q, C, R)
-    Z_best, C_cont, C_ass, C_mis = solve_lower_level(s_0[0], s_0[1], Q, C, c, p, R, gamma)
-    
-    s_best = copy.deepcopy(s_0)
+def perturb(s_best, Q, C, c, p, R, gamma, Z_best, max_attempts=20):
+    """Execute the diversification phase (Perturbation).
+
+    Stage 1: Randomly change the number of selected hotels (N != N*).
+             HPP is used ONLY as a screening tool (LB check), NOT to generate y.
+             A random feasible allocation is generated instead.
+    Stage 2: Partially free the allocation (y) while keeping current hotel
+             selection (x). Uses HPP to identify a promising reallocation.
+    Returns the perturbed solution, or "GLOBAL_OPTIMUM" if no improvement is possible.
+    """
+    I = range(len(R))
+    x_best, y_best = s_best
+    n_hotels_best = sum(x_best.values())
+
+    # --- Stage 1: Structural perturbation (hotel selection) ---
+    for _ in range(max_attempts):
+        n_hotels_new = random.choice(
+            [n for n in range(1, len(I) + 1) if n != n_hotels_best]
+        )
+        x_perturbed = copy.deepcopy(x_best)
+
+        if n_hotels_new > n_hotels_best:
+            closed = [i for i in I if x_perturbed[i] == 0]
+            for i in random.sample(closed, n_hotels_new - n_hotels_best):
+                x_perturbed[i] = 1
+        else:
+            opened = [i for i in I if x_perturbed[i] == 1]
+            for i in random.sample(opened, n_hotels_best - n_hotels_new):
+                x_perturbed[i] = 0
+
+        # HPP provides a lower bound; skip if even the best case cannot beat Z_best
+        z_lb, _ = solve_HPP(x_perturbed, {}, Q, C, c, p, R, gamma)
+
+        if z_lb < Z_best:
+            y_random = random_allocate(x_perturbed, Q, C)
+            if y_random is not None:
+                return (x_perturbed, y_random)
+
+            # Fallback: if random allocation fails, reuse HPP's y
+            _, y_hpp = solve_HPP(x_perturbed, {}, Q, C, c, p, R, gamma)
+            if y_hpp is not None:
+                return (x_perturbed, y_hpp)
+
+    # --- Stage 2: Allocation perturbation (fallback) ---
+    y_partial = copy.deepcopy(y_best)
+    nodes_to_reallocate = list(y_partial.keys())
+    random.shuffle(nodes_to_reallocate)
+
+    for node_key in nodes_to_reallocate:
+        y_partial[node_key] = None
+        z_lb, y_hpp = solve_HPP(x_best, y_partial, Q, C, c, p, R, gamma)
+        if z_lb < Z_best:
+            return (x_best, y_hpp)
+
+    # Neither stage found a solution that can improve Z_best
+    return "GLOBAL_OPTIMUM"
+
+
+def run_ils(Q, C, c, p, R, gamma, tau_max=100):
+    """Run the Iterated Local Search (ILS) algorithm.
+
+    LEADER:   the government — decides which hotels to open and how to assign demand nodes.
+    FOLLOWER: the users — maximise their cost given the leader's decision (worst-case response).
+
+    Parameters
+    ----------
+    Q       : list[list[float]]  — Q[j][k]: demand of node j for room type k
+    C       : list[list[float]]  — C[i][w]: capacity of hotel i for room type w
+    c       : list[list[float]]  — c[i][j]: unit assignment cost (node j → hotel i)
+    p       : list[list[float]]  — p[i][w]: revenue per unit of room type w at hotel i
+    R       : list[float]        — R[i]: minimum revenue target for hotel i
+    gamma   : float              — misplacement penalty
+    tau_max : int                — maximum ILS iterations (default 100)
+
+    Returns
+    -------
+    best_sol      : tuple  — (x_dict, y_dict) best solution found
+    Z_best        : float  — worst-case objective value of best_sol
+    best_breakdown: tuple  — (contract_cost, assign_cost, misplace_cost)
+    """
+    initial_sol = generate_initial_solution(Q, C, R)
+    Z_best, C_cont, C_ass, C_mis = solve_lower_level(
+        initial_sol[0], initial_sol[1], Q, C, c, p, R, gamma
+    )
+
+    best_sol       = copy.deepcopy(initial_sol)
     best_breakdown = (C_cont, C_ass, C_mis)
-    
-    s_current = copy.deepcopy(s_0)
-    tau = 0
-    
-    while tau < tau_max:
-        s_local = local_search(s_current, Q, C, c, p, R, gamma)
-        # s_local[0] è x, s_local[1] è y
-        Z_tau, C_c, C_a, C_m = solve_lower_level(s_local[0], s_local[1], Q, C, c, p, R, gamma)
-        
-        if Z_tau < Z_best:
-            Z_best = Z_tau
-            s_best = copy.deepcopy(s_local)
-            best_breakdown = (C_c, C_a, C_m)
-            
-        s_next = perturb(s_local, Q, C, c, p, R, gamma, Z_best)
-        if s_next == "GLOBAL_OPTIMUM":
-            print("Ottimo globale confermato dall'HPP!")
-            break
-            
-        s_current = copy.deepcopy(s_next) # Accept every local opt (Diversification)
-        tau += 1
-        
-    return s_best, Z_best, best_breakdown
+    s_current      = copy.deepcopy(initial_sol)
 
-import csv
-import os
-import time
+    for tau in range(tau_max):
+        # --- Phase 1: Intensification (Local Search) ---
+        local_x, local_y, Z_local = local_search(s_current, Q, C, c, p, R, gamma)
+        local_sol = (local_x, local_y)
+
+        # --- Phase 2: Update global best (solve breakdown only when needed) ---
+        if Z_local < Z_best:
+            _, c_c, c_a, c_m = solve_lower_level(local_x, local_y, Q, C, c, p, R, gamma)
+            Z_best         = Z_local
+            best_sol       = copy.deepcopy(local_sol)
+            best_breakdown = (c_c, c_a, c_m)
+
+        # --- Phase 3: Diversification (Perturbation) ---
+        s_next = perturb(local_sol, Q, C, c, p, R, gamma, Z_best)
+
+        if s_next == "GLOBAL_OPTIMUM":
+            print("Global optimum confirmed by HPP bound!")
+            break
+
+        s_current = copy.deepcopy(s_next)
+
+    return best_sol, Z_best, best_breakdown
+
 
 def run_instance(file_idx, sheet_idx, output_file="ils_results.csv"):
     file_name = f"{file_idx}.xlsx"
@@ -291,11 +471,11 @@ def run_instance(file_idx, sheet_idx, output_file="ils_results.csv"):
     if not data or "demand" not in data:
         return
 
-    Q = [row for row in data["demand"] if len(row) > 0]
-    C = [row for row in data["capacity"] if len(row) > 0]
-    c = [row for row in data["cost"] if len(row) > 0]
-    p = [row for row in data["price"] if len(row) > 0]
-    R = [val for val in data["revenue"] if val is not None]
+    Q     = [row for row in data["demand"]   if len(row) > 0]
+    C     = [row for row in data["capacity"] if len(row) > 0]
+    c     = [row for row in data["cost"]     if len(row) > 0]
+    p     = [row for row in data["price"]    if len(row) > 0]
+    R     = [val for val in data["revenue"]  if val is not None]
     gamma = data["penalty"]
 
     if not validate_dimensions(Q, C, c, p, R):
@@ -307,8 +487,10 @@ def run_instance(file_idx, sheet_idx, output_file="ils_results.csv"):
     s_best, Z_best, breakdown = run_ils(Q, C, c, p, R, gamma, tau_max=20)
     time_ils = time.time() - start_ils
 
-    x_ils, _ = s_best
-    num_hotels = sum(x_ils.values())
+    x_ils, _               = s_best
+    num_hotels             = sum(x_ils.values())
+    total_hotels           = len(x_ils)
+    hotels_ratio           = f"{num_hotels}/{total_hotels}"
     c_contract, c_assign, c_misplace = breakdown
 
     header = [
@@ -323,21 +505,28 @@ def run_instance(file_idx, sheet_idx, output_file="ils_results.csv"):
         if not file_exists:
             writer.writerow(header)
         writer.writerow([
-            file_idx, sheet_idx, round(Z_best, 2), round(time_ils, 4),
-            num_hotels, round(c_assign, 2), round(c_misplace, 2), round(c_contract, 2)
+            file_idx, sheet_idx, int(Z_best), int(time_ils),
+            hotels_ratio, int(c_assign), int(c_misplace), int(c_contract)
         ])
 
+
 if __name__ == "__main__":
+    start_time = time.time()
     results_file = "ils_results.csv"
 
     if os.path.exists(results_file):
         os.remove(results_file)
 
-    # for file_idx in range(1, 2):
-    #     for sheet_idx in range(0, 3):
-    #         run_instance(file_idx, sheet_idx, results_file)
-    run_instance(1, 0, results_file)
-    run_instance(10, 0, results_file)
+    for file_idx in range(1, 17):
+        for sheet_idx in range(0, 3):
+            run_instance(file_idx, sheet_idx, results_file)
 
+    # run_instance(1, 0, results_file)
+    # run_instance(2, 0, results_file)
+    # run_instance(3, 0, results_file)
+    # run_instance(4, 0, results_file)
+    # run_instance(5, 0, results_file)
 
-    print("\nAll instances processed. Results saved to ils_results.csv")
+    generate_plots_ils(results_file)
+    print(f"Total time needed: {format_time(time.time() - start_time)}")
+
