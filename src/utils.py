@@ -5,10 +5,14 @@ import pandas as pd
 RESULTS_DIR = Path(__file__).parent.parent / "results"
 RESULTS_DIR.mkdir(exist_ok=True)
 
-def generate_plots_flca(csv_file=RESULTS_DIR / "flca_results.csv",
-                        scalability_time_img=RESULTS_DIR / "flca_scalability_time.png",
-                        scalability_objective_img=RESULTS_DIR / "flca_scalability_objective.png",
-                        cost_breakdown_img=RESULTS_DIR / "flca_cost_breakdown.png"):
+def generate_plots_flca(csv_file="flca_results.csv",
+                        scalability_time_img="flca_scalability_time.png",
+                        scalability_objective_img="flca_scalability_objective.png",
+                        cost_breakdown_img="flca_cost_breakdown.png"):
+    csv_file = RESULTS_DIR / Path(csv_file).name
+    scalability_time_img = RESULTS_DIR / Path(scalability_time_img).name
+    scalability_objective_img = RESULTS_DIR / Path(scalability_objective_img).name
+    cost_breakdown_img = RESULTS_DIR / Path(cost_breakdown_img).name
     df = pd.read_csv(csv_file)
 
     # Plot 1: solve time
@@ -44,10 +48,14 @@ def generate_plots_flca(csv_file=RESULTS_DIR / "flca_results.csv",
     print(f"\nAll instances processed. Results saved to {csv_file}")
     print(f"Plots saved in {scalability_time_img}, {scalability_objective_img}, {cost_breakdown_img}")
 
-def generate_plots_ils(csv_file=RESULTS_DIR / "ils_results.csv",
-                       scalability_time_img=RESULTS_DIR / "ils_scalability_time.png",
-                       scalability_objective_img=RESULTS_DIR / "ils_scalability_objective.png",
-                       cost_breakdown_img=RESULTS_DIR / "ils_cost_breakdown.png"):
+def generate_plots_ils(csv_file="ils_results.csv",
+                       scalability_time_img="ils_scalability_time.png",
+                       scalability_objective_img="ils_scalability_objective.png",
+                       cost_breakdown_img="ils_cost_breakdown.png"):
+    csv_file = RESULTS_DIR / Path(csv_file).name
+    scalability_time_img = RESULTS_DIR / Path(scalability_time_img).name
+    scalability_objective_img = RESULTS_DIR / Path(scalability_objective_img).name
+    cost_breakdown_img = RESULTS_DIR / Path(cost_breakdown_img).name
     df = pd.read_csv(csv_file)
 
     # Plot 1: solve time
