@@ -74,3 +74,15 @@ def generate_plots_ils(csv_file = "ils_results.csv", scalability_time_img="ils_s
 
     print(f"\nAll instances processed. Results saved to {csv_file}")
     print(f"Plot about scalability and cost breakdown saved in {scalability_time_img}, {scalability_objective_img}, {cost_breakdown_img}")
+
+
+def format_time(seconds: float) -> str:
+    hours = int(seconds // 3600)
+    minutes = int((seconds % 3600) // 60)
+    secs = round(seconds % 60)
+    if hours > 0:
+        return f"{hours}h {minutes}m {secs}s"
+    elif minutes > 0:
+        return f"{minutes}m {secs}s"
+    else:
+        return f"{secs}s"
