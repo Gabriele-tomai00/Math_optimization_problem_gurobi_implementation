@@ -1,5 +1,6 @@
 # ils.py
 
+import argparse
 import random
 import copy
 import os
@@ -511,22 +512,50 @@ def run_instance(file_idx, sheet_idx, output_file="ils_results.csv"):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--time-limit",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Stop after 2 hours and save partial results (default: on). Use --no-time-limit to disable."
+    )
+    parser.add_argument(
+        "--test", "-t",
+        action="store_true",
+        default=False,
+        help="Run a small test instead of all instances. Edit the test block in __main__ to customize."
+    )
+    args = parser.parse_args()
+
     start_time = time.time()
-    results_file = "ils_results.csv"
+    results_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "results")
+    results_file = os.path.join(results_dir, "ils_results.csv")
 
     if os.path.exists(results_file):
         os.remove(results_file)
 
-    for file_idx in range(1, 17):
-        for sheet_idx in range(0, 3):
-            run_instance(file_idx, sheet_idx, results_file)
+    if args.test:
+        # edit here if you want to test something
+        run_instance(1, 0, results_file)
+        run_instance(1, 1, results_file)
+        run_instance(2, 0, results_file)
+        run_instance(2, 1, results_file)
+    else:
+        MAX_TIME = 2 * 3600
+        timed_out = False
+        for file_idx in range(1, 17):
+            for sheet_idx in range(0, 3):
+                if args.time_limit and (time.time() - start_time) >= MAX_TIME:
+                    timed_out = True
+                    break
+                run_instance(file_idx, sheet_idx, results_file)
+            if timed_out:
+                break
 
-    # run_instance(1, 0, results_file)
-    # run_instance(2, 0, results_file)
-    # run_instance(3, 0, results_file)
-    # run_instance(4, 0, results_file)
-    # run_instance(5, 0, results_file)
+        if timed_out:
+            print(f"\nTime limit reached (2h). Partial results saved to {results_file}")
 
-    generate_plots_ils(results_file)
+    if os.path.isfile(results_file):
+        generate_plots_ils(results_file)
     print(f"Total time needed: {format_time(time.time() - start_time)}")
 

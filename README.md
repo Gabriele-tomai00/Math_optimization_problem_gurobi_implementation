@@ -21,6 +21,25 @@ Each sheet is organized as follows:
 
 ### Structure -->
 
+### ILS
 
+#### Usage
+
+```bash
+# Full run on all 16 instances × 3 sheets, with 2-hour limit (default)
+python src/ils.py
+
+# Full run without time limit
+python src/ils.py --no-time-limit
+
+# Test mode: runs a small subset of instances (edit the test block in ils.py to customize)
+python src/ils.py --test
+python src/ils.py -t
+
+# Test mode without time limit
+python src/ils.py -t --no-time-limit
+```
+
+All outputs (CSV results and plots) are saved in the `results/` directory.
 
 A project of Eva Fumo and Gabriele Tomai

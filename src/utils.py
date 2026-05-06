@@ -17,7 +17,7 @@ def generate_plots_flca(csv_file="flca_results.csv",
 
     # Plot 1: solve time
     plt.figure()
-    plt.plot(df["file"], df["time_sec"], marker="o")
+    plt.scatter(df["file"], df["time_sec"])
     plt.xlabel("File")
     plt.ylabel("Solve time (seconds)")
     plt.title("FLCA Scalability: Solve Time")
@@ -26,7 +26,7 @@ def generate_plots_flca(csv_file="flca_results.csv",
 
     # Plot 2: objective
     plt.figure()
-    plt.plot(df["file"], df["objective"], marker="o", color="green")
+    plt.scatter(df["file"], df["objective"], color="green")
     plt.xlabel("File")
     plt.ylabel("Objective value")
     plt.title("FLCA Scalability: Objective Value")
@@ -35,9 +35,9 @@ def generate_plots_flca(csv_file="flca_results.csv",
 
     # Plot 3: cost breakdown
     plt.figure()
-    plt.plot(df["file"], df["assignment_cost"], label="Assignment cost")
-    plt.plot(df["file"], df["misplacement_cost"], label="Misplacement cost")
-    plt.plot(df["file"], df["contract_cost"], label="Contract cost")
+    plt.scatter(df["file"], df["assignment_cost"], label="Assignment cost")
+    plt.scatter(df["file"], df["misplacement_cost"], label="Misplacement cost")
+    plt.scatter(df["file"], df["contract_cost"], label="Contract cost")
     plt.xlabel("File")
     plt.ylabel("Cost")
     plt.title("FLCA Cost Breakdown")
@@ -60,7 +60,7 @@ def generate_plots_ils(csv_file="ils_results.csv",
 
     # Plot 1: solve time
     plt.figure()
-    plt.plot(df["file"], df["time_sec"], marker="o")
+    plt.scatter(df["file"], df["time_sec"])
     plt.xlabel("File")
     plt.ylabel("Solve time (seconds)")
     plt.title("ILS Scalability: Solve Time")
@@ -69,7 +69,7 @@ def generate_plots_ils(csv_file="ils_results.csv",
 
     # Plot 2: objective
     plt.figure()
-    plt.plot(df["file"], df["objective"], marker="o", color="green")
+    plt.scatter(df["file"], df["objective"], color="green")
     plt.xlabel("File")
     plt.ylabel("Objective value")
     plt.title("ILS Scalability: Objective Value")
@@ -78,9 +78,9 @@ def generate_plots_ils(csv_file="ils_results.csv",
 
     # Plot 3: cost breakdown
     plt.figure()
-    plt.plot(df["file"], df["assignment_cost"], label="Assignment cost")
-    plt.plot(df["file"], df["misplacement_cost"], label="Misplacement cost")
-    plt.plot(df["file"], df["contract_cost"], label="Contract cost")
+    plt.scatter(df["file"], df["assignment_cost"], label="Assignment cost")
+    plt.scatter(df["file"], df["misplacement_cost"], label="Misplacement cost")
+    plt.scatter(df["file"], df["contract_cost"], label="Contract cost")
     plt.xlabel("File")
     plt.ylabel("Cost")
     plt.title("ILS Cost Breakdown")
