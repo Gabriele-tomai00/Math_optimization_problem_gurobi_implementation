@@ -495,7 +495,7 @@ def run_instance(file_idx, sheet_idx, output_file="ils_results.csv"):
     c_contract, c_assign, c_misplace = breakdown
 
     header = [
-        "file", "sheet", "objective", "time_sec",
+        "file", "sheet", "objective", "time_sec", "time_formatted",
         "hotels_selected", "assignment_cost",
         "misplacement_cost", "contract_cost"
     ]
@@ -507,6 +507,7 @@ def run_instance(file_idx, sheet_idx, output_file="ils_results.csv"):
             writer.writerow(header)
         writer.writerow([
             file_idx, sheet_idx, int(Z_best), int(time_ils),
+            format_time(time_ils),
             hotels_ratio, int(c_assign), int(c_misplace), int(c_contract)
         ])
 
@@ -516,8 +517,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--time-limit",
         action=argparse.BooleanOptionalAction,
-        default=True,
-        help="Stop after 2 hours and save partial results (default: on). Use --no-time-limit to disable."
+        default=False,
+        help="Stop after 2 hours and save partial results (default: off)."
     )
     parser.add_argument(
         "--test", "-t",

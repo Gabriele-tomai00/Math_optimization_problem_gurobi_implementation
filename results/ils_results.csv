@@ -1,0 +1,5 @@
+file,sheet,objective,time_sec,hotels_selected,assignment_cost,misplacement_cost,contract_cost
+1,0,66653,56,10/12,47453,19200,0
+1,1,92758,42,11/12,55106,30300,7351
+2,0,158126,115,10/15,30858,51299,75968
+2,1,43418,120,12/15,34978,1399,7040

@@ -7,7 +7,7 @@ import csv
 import time
 
 from data_loader import get_data_from_file_excel, validate_dimensions
-from utils import generate_plots_flca
+from utils import generate_plots_flca, format_time
 
 def debug_solution(model, x, y, z, Q, C):
     I = range(len(C))
@@ -210,12 +210,13 @@ def run_instance(file_idx, sheet_idx, output_file="results_flca.csv"):
     )
 
     header = [
-        "file", "sheet", "objective", "time_sec",
+        "file", "sheet", "objective", "time_sec", "time_formatted",
         "hotels_selected", "assignment_cost",
         "misplacement_cost", "contract_cost"
     ]
 
     file_exists = os.path.isfile(output_file)
+    elapsed = end - start
 
     with open(output_file, "a", newline="") as f:
         writer = csv.writer(f)
@@ -225,7 +226,8 @@ def run_instance(file_idx, sheet_idx, output_file="results_flca.csv"):
             file_idx,
             sheet_idx,
             round(obj, 2),
-            round(end - start, 4),
+            round(elapsed, 4),
+            format_time(elapsed),
             hotels_selected,
             round(assign_cost, 2),
             round(misplacement_cost, 2),
@@ -233,7 +235,8 @@ def run_instance(file_idx, sheet_idx, output_file="results_flca.csv"):
         ])
 
 if __name__ == "__main__":
-    results_file = "flca_results.csv"
+    results_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "results")
+    results_file = os.path.join(results_dir, "flca_results.csv")
 
     if os.path.exists(results_file):
         os.remove(results_file)
