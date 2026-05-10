@@ -221,7 +221,54 @@ def local_search(s, Q, C, c, p, R, gamma):
 
 
 def solve_HPP(x_fixed, y_partial_fixed, Q, C, c, p, R, gamma):
-    """Solve the HPP problem (single-level relaxation) to obtain a lower bound."""
+    """single-level relaxation of FLDA.
+
+    x_fixed : dict {i: 0|1}
+        Hotel selection to hold fixed throughout the solve.
+        Every x[i] is pinned to x_fixed[i] via an equality constraint,
+        so HPP searches only within this choice of open hotels.
+
+    y_partial_fixed : dict {(i, j): 0|1|None}
+        Partial allocation constraints for y[i,j].
+        - Empty dict {}       → y is fully free (Stage 1 call).
+        - Entry with 0 or 1   → y[i,j] is pinned to that value (Stage 2,
+                                 elements still inherited from y_best).
+        - Entry with None     → y[i,j] is freed and optimised by HPP
+                                 (Stage 2, elements released one by one).
+
+    Q : list[list[float]]
+        Q[j][k]: total demand of node j for room type k.
+
+    C : list[list[float]]
+        C[i][w]: capacity of hotel i for room type w.
+
+    c : list[list[float]]
+        c[i][j]: unit assignment cost for sending demand from node j to hotel i
+                 (e.g. travel time in minutes × demand).
+
+    p : list[list[float]]
+        p[i][w]: revenue per unit of room type w at hotel i.
+
+    R : list[float]
+        R[i]: minimum revenue target for hotel i. If actual revenue falls
+        below R[i], the government pays a contracting cost T[i] = R[i] - revenue.
+
+    gamma : float
+        Misplacement penalty per unit of demand assigned to a room type
+        different from the traveller's preference (w != k).
+
+    Returns
+    -------
+    ObjVal : float
+        Z_lb — the minimum government cost achievable under x_fixed given the
+        UE-feasibility relaxation. Acts as a certified lower bound on Z_FLDA.
+        Returns float('inf') if the model is infeasible.
+
+    y_out : dict {(i, j): 0|1} or None
+        The allocation plan that achieves Z_lb. Used directly only in Stage 2;
+        discarded in Stage 1. Returns None if the model is infeasible.
+    """
+
     I, J, K = range(len(R)), range(len(Q)), range(len(Q[0]))
     model = gp.Model("HPP")
     model.Params.OutputFlag = 0
@@ -335,7 +382,9 @@ def random_allocate(x_dict, Q, C):
     """
     I, J = range(len(x_dict)), range(len(Q))
     open_hotels = [i for i in I if x_dict[i] == 1]
-
+    
+    # 200 attempts are sufficient: even assuming a conservative feasibility
+    # probability of p=0.1, P(at least one success) = 1 - 0.9^200 ≈ 1 - 7e-10 ≈ 1.0
     for _ in range(200):
         y_candidate = {(i, j): 0 for i in I for j in J}
         for i in open_hotels:
@@ -351,8 +400,6 @@ def perturb(s_best, Q, C, c, p, R, gamma, Z_best, max_attempts=20):
     """Execute the diversification phase (Perturbation).
 
     Stage 1: Randomly change the number of selected hotels (N != N*).
-             HPP is used ONLY as a screening tool (LB check), NOT to generate y.
-             A random feasible allocation is generated instead.
     Stage 2: Partially free the allocation (y) while keeping current hotel
              selection (x). Uses HPP to identify a promising reallocation.
     Returns the perturbed solution, or "GLOBAL_OPTIMUM" if no improvement is possible.
@@ -369,17 +416,43 @@ def perturb(s_best, Q, C, c, p, R, gamma, Z_best, max_attempts=20):
         x_perturbed = copy.deepcopy(x_best)
 
         if n_hotels_new > n_hotels_best:
+            # Adding hotels can only increase capacity → always feasible
             closed = [i for i in I if x_perturbed[i] == 0]
             for i in random.sample(closed, n_hotels_new - n_hotels_best):
                 x_perturbed[i] = 1
+            # Single HPP call for screening
+            z_lb, _ = solve_HPP(x_perturbed, {}, Q, C, c, p, R, gamma)
+
         else:
+            # close N* - N randomly chosen open hotels
             opened = [i for i in I if x_perturbed[i] == 1]
-            for i in random.sample(opened, n_hotels_best - n_hotels_new):
+            hotels_closed_by_iii = random.sample(opened, n_hotels_best - n_hotels_new)
+            for i in hotels_closed_by_iii:
                 x_perturbed[i] = 0
 
-        # HPP provides a lower bound; skip if even the best case cannot beat Z_best
-        z_lb, _ = solve_HPP(x_perturbed, {}, Q, C, c, p, R, gamma)
+            # (a) Re-solve follower model (HPP) to check feasibility
+            z_lb, _ = solve_HPP(x_perturbed, {}, Q, C, c, p, R, gamma)
 
+            if z_lb == float('inf'):
+                # (b) Re-open hotels that were ALREADY closed in x_best (not touched by step iii)
+                already_closed = [i for i in I if x_best[i] == 0]
+                random.shuffle(already_closed)
+                for i in already_closed:
+                    x_perturbed[i] = 1
+                    z_lb, _ = solve_HPP(x_perturbed, {}, Q, C, c, p, R, gamma)
+                    if z_lb < float('inf'):
+                        break
+
+            if z_lb == float('inf'):
+                # (c) Re-open hotels closed in step iii
+                random.shuffle(hotels_closed_by_iii)
+                for i in hotels_closed_by_iii:
+                    x_perturbed[i] = 1
+                    z_lb, _ = solve_HPP(x_perturbed, {}, Q, C, c, p, R, gamma)
+                    if z_lb < float('inf'):
+                        break
+
+        # Screening: skip if even the best case cannot beat Z_best
         if z_lb < Z_best:
             y_random = random_allocate(x_perturbed, Q, C)
             if y_random is not None:
