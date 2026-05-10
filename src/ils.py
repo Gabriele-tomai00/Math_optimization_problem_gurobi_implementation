@@ -496,7 +496,7 @@ def perturb(s_best, Q, C, c, p, R, gamma, Z_best, max_attempts=20):
     return "GLOBAL_OPTIMUM"
 
 
-def run_ils(Q, C, c, p, R, gamma, tau_max=100):
+def run_ils(Q, C, c, p, R, gamma, tau_max=100, time_limit=None):
     """Run the Iterated Local Search (ILS) algorithm.
 
     LEADER:   the government — decides which hotels to open and how to assign demand nodes.
@@ -511,6 +511,7 @@ def run_ils(Q, C, c, p, R, gamma, tau_max=100):
     R       : list[float]        — R[i]: minimum revenue target for hotel i
     gamma   : float              — misplacement penalty
     tau_max : int                — maximum ILS iterations (default 100)
+    time_limit : float | None    — max seconds per run; None means no limit
 
     Returns
     -------
@@ -518,6 +519,7 @@ def run_ils(Q, C, c, p, R, gamma, tau_max=100):
     Z_best        : float  — worst-case objective value of best_sol
     best_breakdown: tuple  — (contract_cost, assign_cost, misplace_cost)
     """
+    t_start = time.time()
     initial_sol = generate_initial_solution(Q, C, R)
     Z_best, C_cont, C_ass, C_mis = solve_lower_level(
         initial_sol[0], initial_sol[1], Q, C, c, p, R, gamma
@@ -528,6 +530,9 @@ def run_ils(Q, C, c, p, R, gamma, tau_max=100):
     s_current      = copy.deepcopy(initial_sol)
 
     for tau in range(tau_max):
+        if time_limit is not None and (time.time() - t_start) >= time_limit:
+            print(f"  Time limit reached at iteration {tau}, stopping early.")
+            break
         # --- Phase 1: Intensification (Local Search) ---
         local_x, local_y, Z_local = local_search(s_current, Q, C, c, p, R, gamma)
         local_sol = (local_x, local_y)
@@ -551,7 +556,7 @@ def run_ils(Q, C, c, p, R, gamma, tau_max=100):
     return best_sol, Z_best, best_breakdown
 
 
-def run_instance(file_idx, sheet_idx, output_file="ils_results.csv"):
+def run_instance(file_idx, sheet_idx, output_file="ils_results.csv", time_limit=None):
     file_name = f"{file_idx}.xlsx"
     file_path = os.path.join("..", "quarantine_hotel_instances", file_name)
 
@@ -576,7 +581,7 @@ def run_instance(file_idx, sheet_idx, output_file="ils_results.csv"):
     print(f"--- Running Instance: File {file_idx}, Sheet {sheet_idx} ---")
     
     start_ils = time.time()
-    s_best, Z_best, breakdown = run_ils(Q, C, c, p, R, gamma, tau_max=20)
+    s_best, Z_best, breakdown = run_ils(Q, C, c, p, R, gamma, tau_max=20, time_limit=time_limit)
     time_ils = time.time() - start_ils
 
     x_ils, _               = s_best
@@ -626,26 +631,18 @@ if __name__ == "__main__":
     if os.path.exists(results_file):
         os.remove(results_file)
 
+    instance_time_limit = 2 * 3600 if args.time_limit else None
+
     if args.test:
         # edit here if you want to test something
-        run_instance(1, 0, results_file)
-        run_instance(1, 1, results_file)
-        run_instance(2, 0, results_file)
-        run_instance(2, 1, results_file)
+        run_instance(1, 0, results_file, time_limit=instance_time_limit)
+        run_instance(1, 1, results_file, time_limit=instance_time_limit)
+        run_instance(2, 0, results_file, time_limit=instance_time_limit)
+        run_instance(2, 1, results_file, time_limit=instance_time_limit)
     else:
-        MAX_TIME = 2 * 3600
-        timed_out = False
-        for file_idx in range(1, 17):
-            for sheet_idx in range(0, 3):
-                if args.time_limit and (time.time() - start_time) >= MAX_TIME:
-                    timed_out = True
-                    break
-                run_instance(file_idx, sheet_idx, results_file)
-            if timed_out:
-                break
-
-        if timed_out:
-            print(f"\nTime limit reached (2h). Partial results saved to {results_file}")
+        for sheet_idx in range(0, 3):
+            for file_idx in range(1, 17):
+                run_instance(file_idx, sheet_idx, results_file, time_limit=instance_time_limit)
 
     if os.path.isfile(results_file):
         generate_plots_ils(results_file)
