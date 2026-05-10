@@ -415,14 +415,16 @@ def perturb(s_best, Q, C, c, p, R, gamma, Z_best, max_attempts=20):
         )
         x_perturbed = copy.deepcopy(x_best)
 
+        # OPEN HOTELS
         if n_hotels_new > n_hotels_best:
             # Adding hotels can only increase capacity → always feasible
-            closed = [i for i in I if x_perturbed[i] == 0]
-            for i in random.sample(closed, n_hotels_new - n_hotels_best):
+            currently_closed = [i for i in I if x_perturbed[i] == 0]
+            for i in random.sample(currently_closed, n_hotels_new - n_hotels_best):
                 x_perturbed[i] = 1
             # Single HPP call for screening
             z_lb, _ = solve_HPP(x_perturbed, {}, Q, C, c, p, R, gamma)
 
+        # CLOSE HOTELS
         else:
             # close N* - N randomly chosen open hotels
             opened = [i for i in I if x_perturbed[i] == 1]
@@ -452,16 +454,32 @@ def perturb(s_best, Q, C, c, p, R, gamma, Z_best, max_attempts=20):
                     if z_lb < float('inf'):
                         break
 
-        # Screening: skip if even the best case cannot beat Z_best
-        if z_lb < Z_best:
-            y_random = random_allocate(x_perturbed, Q, C)
-            if y_random is not None:
-                return (x_perturbed, y_random)
 
-            # Fallback: if random allocation fails, reuse HPP's y
-            _, y_hpp = solve_HPP(x_perturbed, {}, Q, C, c, p, R, gamma)
-            if y_hpp is not None:
-                return (x_perturbed, y_hpp)
+        # Screening: skip if even the best case cannot beat Z_best
+                if z_lb < Z_best:
+                    # Identify hotels newly opened by perturbation
+                    new_hotels = [i for i in I if x_perturbed[i] == 1 and x_best[i] == 0]
+
+                    if new_hotels:
+                        # Paper §3.3 point ii: keep y_best for already-open hotels,
+                        # randomly allocate only the newly opened ones
+                        y_perturbed = copy.deepcopy(y_best)
+                        for i in new_hotels:
+                            j = random.choice(list(range(len(Q))))
+                            y_perturbed[i, j] = 1
+                        if is_feasible(x_perturbed, y_perturbed, Q, C):
+                            return (x_perturbed, y_perturbed)
+                    
+                    # Fallback (case iii or infeasible random allocation):
+                    # full random allocation over all open hotels
+                    y_random = random_allocate(x_perturbed, Q, C)
+                    if y_random is not None:
+                        return (x_perturbed, y_random)
+
+                    # Last resort: use HPP's optimal y
+                    _, y_hpp = solve_HPP(x_perturbed, {}, Q, C, c, p, R, gamma)
+                    if y_hpp is not None:
+                        return (x_perturbed, y_hpp)
 
     # --- Stage 2: Allocation perturbation (fallback) ---
     y_partial = copy.deepcopy(y_best)
