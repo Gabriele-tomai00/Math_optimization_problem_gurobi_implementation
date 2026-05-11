@@ -517,7 +517,8 @@ def run_ils(demand, capacity, cost, price, revenue, gamma, tau_max=100, time_lim
             print("Global optimum confirmed by HPP bound!")
             break
 
-        s_current = copy.deepcopy(s_next)
+        # Acceptance criterion: always accept the perturbed solution (diversification)
+        current_solution = copy.deepcopy(s_next)  # ← era s_current, variabile mai usata
 
     return best_sol, Z_best, best_breakdown
 
