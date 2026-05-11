@@ -166,17 +166,17 @@ def is_feasible(x_dict, y_dict, Q, C):
     return True
 
 
-def local_search(s, Q, C, c, p, R, gamma):
+def local_search(current_solution, demand, capacity, cost, price, Revenue, gamma):
     """Execute swap operations on nodes assigned to open hotels.
     Returns the locally optimal (x, y) and its objective value,
     avoiding a redundant lower-level solve in the caller.
     """
-    I, J = range(len(R)), range(len(Q))
-    current_x   = copy.deepcopy(s[0])
-    best_local_y = copy.deepcopy(s[1])
+    I, J = range(len(Revenue)), range(len(demand))
+    current_x   = copy.deepcopy(current_solution[0])
+    best_local_y = copy.deepcopy(current_solution[1])
 
     best_local_Z, _, _, _ = solve_lower_level(
-        current_x, best_local_y, Q, C, c, p, R, gamma
+        current_x, best_local_y, demand, capacity, cost, price, Revenue, gamma
     )
 
     while True:
@@ -196,7 +196,7 @@ def local_search(s, Q, C, c, p, R, gamma):
                     new_y = copy.deepcopy(best_local_y)
                     new_y[i1, j1], new_y[i1, j2] = 0, 1
                     new_y[i2, j2], new_y[i2, j1] = 0, 1
-                    if is_feasible(current_x, new_y, Q, C):
+                    if is_feasible(current_x, new_y, demand, capacity):
                         neighbors.append(new_y)
 
         # Evaluate all neighbors and select the best one (steepest descent)
@@ -204,7 +204,7 @@ def local_search(s, Q, C, c, p, R, gamma):
         best_neighbor_Z = float('inf')
 
         for n_y in neighbors:
-            Z_val, _, _, _ = solve_lower_level(current_x, n_y, Q, C, c, p, R, gamma)
+            Z_val, _, _, _ = solve_lower_level(current_x, n_y, demand, capacity, cost, price, Revenue, gamma)
             if Z_val < best_neighbor_Z:
                 best_neighbor_Z = Z_val
                 best_neighbor_y = n_y
@@ -220,7 +220,7 @@ def local_search(s, Q, C, c, p, R, gamma):
     return current_x, best_local_y, best_local_Z
 
 
-def solve_HPP(x_fixed, y_partial_fixed, Q, C, c, p, R, gamma):
+def solve_HPP(x_fixed, y_partial_fixed, demand, capacity, cost, price, R, gamma):
     """single-level relaxation of FLDA.
 
     x_fixed : dict {i: 0|1}
@@ -236,27 +236,6 @@ def solve_HPP(x_fixed, y_partial_fixed, Q, C, c, p, R, gamma):
         - Entry with None     → y[i,j] is freed and optimised by HPP
                                  (Stage 2, elements released one by one).
 
-    Q : list[list[float]]
-        Q[j][k]: total demand of node j for room type k.
-
-    C : list[list[float]]
-        C[i][w]: capacity of hotel i for room type w.
-
-    c : list[list[float]]
-        c[i][j]: unit assignment cost for sending demand from node j to hotel i
-                 (e.g. travel time in minutes × demand).
-
-    p : list[list[float]]
-        p[i][w]: revenue per unit of room type w at hotel i.
-
-    R : list[float]
-        R[i]: minimum revenue target for hotel i. If actual revenue falls
-        below R[i], the government pays a contracting cost T[i] = R[i] - revenue.
-
-    gamma : float
-        Misplacement penalty per unit of demand assigned to a room type
-        different from the traveller's preference (w != k).
-
     Returns
     -------
     ObjVal : float
@@ -269,7 +248,7 @@ def solve_HPP(x_fixed, y_partial_fixed, Q, C, c, p, R, gamma):
         discarded in Stage 1. Returns None if the model is infeasible.
     """
 
-    I, J, K = range(len(R)), range(len(Q)), range(len(Q[0]))
+    I, J, K = range(len(R)), range(len(demand)), range(len(demand[0]))
     model = gp.Model("HPP")
     model.Params.OutputFlag = 0
 
@@ -300,8 +279,8 @@ def solve_HPP(x_fixed, y_partial_fixed, Q, C, c, p, R, gamma):
     # Constraint (4): capacity covers demand for each node
     for j in J:
         model.addConstr(
-            gp.quicksum(C[i][w] * y[i, j] for i in I for w in K)
-            >= gp.quicksum(Q[j][k] for k in K),
+            gp.quicksum(capacity[i][w] * y[i, j] for i in I for w in K)
+            >= gp.quicksum(demand[j][k] for k in K),
             name=f"capacity_node[{j}]"
         )
 
@@ -318,8 +297,8 @@ def solve_HPP(x_fixed, y_partial_fixed, Q, C, c, p, R, gamma):
         for j in J:
             for w in K:
                 model.addConstr(
-                    gp.quicksum(Q[j][k] * z[i, j, k, w] for k in K)
-                    <= C[i][w] * y[i, j],
+                    gp.quicksum(demand[j][k] * z[i, j, k, w] for k in K)
+                    <= capacity[i][w] * y[i, j],
                     name=f"cap[{i},{j},{w}]"
                 )
 
@@ -331,11 +310,11 @@ def solve_HPP(x_fixed, y_partial_fixed, Q, C, c, p, R, gamma):
             )
             model.addConstr(
                 gp.quicksum(B[i, j, k] for i in I)
-                <= sum(C[i][k] for i in I) * (1 - r[j, k])
+                <= sum(capacity[i][k] for i in I) * (1 - r[j, k])
             )
             for i in I:
                 model.addConstr(
-                    C[i][k] * y[i, j] - gp.quicksum(Q[j][w] * z[i, j, w, k] for w in K)
+                    capacity[i][k] * y[i, j] - gp.quicksum(demand[j][w] * z[i, j, w, k] for w in K)
                     <= B[i, j, k]
                 )
 
@@ -348,9 +327,9 @@ def solve_HPP(x_fixed, y_partial_fixed, Q, C, c, p, R, gamma):
 
     # Contracting cost constraints (Eq. 29-32)
     for i in I:
-        actual_rev = gp.quicksum(p[i][w] * Q[j][k] * z[i, j, k, w]
+        actual_rev = gp.quicksum(price[i][w] * demand[j][k] * z[i, j, k, w]
                                  for j in J for k in K for w in K)
-        max_rev = sum(C[i][w] * p[i][w] for w in K)
+        max_rev = sum(capacity[i][w] * price[i][w] for w in K)
 
         model.addConstr(T[i] <= R[i] - actual_rev + delta[i] * (max_rev - R[i]))
         model.addConstr(T[i] >= R[i] * x[i] - actual_rev)   # was: x_fixed[i]
@@ -360,9 +339,9 @@ def solve_HPP(x_fixed, y_partial_fixed, Q, C, c, p, R, gamma):
     # Objective: minimize (leader's perspective, lower bound on worst-case cost)
     obj = (
         gp.quicksum(T[i] for i in I)
-        + gp.quicksum(c[i][j] * Q[j][k] * z[i, j, k, w]
+        + gp.quicksum(cost[i][j] * demand[j][k] * z[i, j, k, w]
                       for i in I for j in J for k in K for w in K)
-        + gp.quicksum(gamma * Q[j][k] * z[i, j, k, w]
+        + gp.quicksum(gamma * demand[j][k] * z[i, j, k, w]
                       for i in I for j in J for k in K for w in K if w != k)
     )
     model.setObjective(obj, GRB.MINIMIZE)
@@ -396,7 +375,7 @@ def random_allocate(x_dict, Q, C):
     return None
 
 
-def perturb(s_best, Q, C, c, p, R, gamma, Z_best, max_attempts=20):
+def perturb(sol_from_local_search, demand, capacity, cost, price, revenue, gamma, Z_best, max_attempts=20):
     """Execute the diversification phase (Perturbation).
 
     Stage 1: Randomly change the number of selected hotels (N != N*).
@@ -404,99 +383,84 @@ def perturb(s_best, Q, C, c, p, R, gamma, Z_best, max_attempts=20):
              selection (x). Uses HPP to identify a promising reallocation.
     Returns the perturbed solution, or "GLOBAL_OPTIMUM" if no improvement is possible.
     """
-    I = range(len(R))
-    x_best, y_best = s_best
-    n_hotels_best = sum(x_best.values())
+    num_hotels = range(len(revenue)) 
+    x_best, y_best = sol_from_local_search
+    num_hotels_best = sum(x_best.values())
 
     # --- Stage 1: Structural perturbation (hotel selection) ---
+    # i. Generate a casual N != N*
     for _ in range(max_attempts):
         n_hotels_new = random.choice(
-            [n for n in range(1, len(I) + 1) if n != n_hotels_best]
+            [n for n in range(1, len(num_hotels) + 1) if n != num_hotels_best]
         )
         x_perturbed = copy.deepcopy(x_best)
+        y_perturbed = None
 
-        # OPEN HOTELS
-        if n_hotels_new > n_hotels_best:
-            # Adding hotels can only increase capacity → always feasible
-            currently_closed = [i for i in I if x_perturbed[i] == 0]
-            for i in random.sample(currently_closed, n_hotels_new - n_hotels_best):
+        # ii. Case N > N* OPEN HOTELS
+        if n_hotels_new > num_hotels_best:
+            # open the N-N* hotels
+            currently_closed = [i for i in num_hotels if x_perturbed[i] == 0]
+            for i in random.sample(currently_closed, n_hotels_new - num_hotels_best):
                 x_perturbed[i] = 1
-            # Single HPP call for screening
-            z_lb, _ = solve_HPP(x_perturbed, {}, Q, C, c, p, R, gamma)
+            # casually allocation
+            y_perturbed = random_allocate(x_perturbed, demand, capacity)
 
-        # CLOSE HOTELS
+        # iii. Case N < N* CLOSE HOTELS
         else:
-            # close N* - N randomly chosen open hotels
-            opened = [i for i in I if x_perturbed[i] == 1]
-            hotels_closed_by_iii = random.sample(opened, n_hotels_best - n_hotels_new)
+            opened = [i for i in num_hotels if x_perturbed[i] == 1]
+            hotels_closed_by_iii = random.sample(opened, num_hotels_best - n_hotels_new)
             for i in hotels_closed_by_iii:
                 x_perturbed[i] = 0
 
-            # (a) Re-solve follower model (HPP) to check feasibility
-            z_lb, _ = solve_HPP(x_perturbed, {}, Q, C, c, p, R, gamma)
+            # (a) Does a feasible (x, y) exist with the remaining hotels?
+            y_perturbed = random_allocate(x_perturbed, demand, capacity)
 
-            if z_lb == float('inf'):
-                # (b) Re-open hotels that were ALREADY closed in x_best (not touched by step iii)
-                already_closed = [i for i in I if x_best[i] == 0]
-                random.shuffle(already_closed)
-                for i in already_closed:
+            if y_perturbed is None:
+                # (b) No feasible y → reopen hotels that were already closed in s*
+                already_closed_in_best = [i for i in num_hotels if x_best[i] == 0]
+                random.shuffle(already_closed_in_best)
+                for i in already_closed_in_best:
                     x_perturbed[i] = 1
-                    z_lb, _ = solve_HPP(x_perturbed, {}, Q, C, c, p, R, gamma)
-                    if z_lb < float('inf'):
-                        break
+                    y_perturbed = random_allocate(x_perturbed, demand, capacity)
+                    if y_perturbed is not None:
+                        break  # feasible (x, y) found
 
-            if z_lb == float('inf'):
-                # (c) Re-open hotels closed in step iii
+            if y_perturbed is None:
+                # (c) Still infeasible → reopen hotels closed in step iii, one at a time
                 random.shuffle(hotels_closed_by_iii)
                 for i in hotels_closed_by_iii:
                     x_perturbed[i] = 1
-                    z_lb, _ = solve_HPP(x_perturbed, {}, Q, C, c, p, R, gamma)
-                    if z_lb < float('inf'):
+                    y_perturbed = random_allocate(x_perturbed, demand, capacity)
+                    if y_perturbed is not None:
                         break
 
-
-        # Screening: skip if even the best case cannot beat Z_best
-                if z_lb < Z_best:
-                    # Identify hotels newly opened by perturbation
-                    new_hotels = [i for i in I if x_perturbed[i] == 1 and x_best[i] == 0]
-
-                    if new_hotels:
-                        # Paper §3.3 point ii: keep y_best for already-open hotels,
-                        # randomly allocate only the newly opened ones
-                        y_perturbed = copy.deepcopy(y_best)
-                        for i in new_hotels:
-                            j = random.choice(list(range(len(Q))))
-                            y_perturbed[i, j] = 1
-                        if is_feasible(x_perturbed, y_perturbed, Q, C):
-                            return (x_perturbed, y_perturbed)
-                    
-                    # Fallback (case iii or infeasible random allocation):
-                    # full random allocation over all open hotels
-                    y_random = random_allocate(x_perturbed, Q, C)
-                    if y_random is not None:
-                        return (x_perturbed, y_random)
-
-                    # Last resort: use HPP's optimal y
-                    _, y_hpp = solve_HPP(x_perturbed, {}, Q, C, c, p, R, gamma)
-                    if y_hpp is not None:
-                        return (x_perturbed, y_hpp)
+        # At this point (x_perturbed, y_perturbed) is a feasible location-allocation scheme
+        # NOW run HPP for the acceptance/screening check (Section 3.3, after the procedure)
+        if y_perturbed is not None:
+            z_lb, _ = solve_HPP(x_perturbed, {}, demand, capacity, cost, price, revenue, gamma)
+            if z_lb < Z_best:
+                return (x_perturbed, y_perturbed)
 
     # --- Stage 2: Allocation perturbation (fallback) ---
     y_partial = copy.deepcopy(y_best)
-    nodes_to_reallocate = list(y_partial.keys())
+
+    # Only free variables for OPEN hotels: closed hotels are already
+    # forced to 0 by constraint (3) inside HPP regardless
+    nodes_to_reallocate = [
+        (i, j) for (i, j) in y_partial.keys() if x_best[i] == 1
+    ]
     random.shuffle(nodes_to_reallocate)
 
     for node_key in nodes_to_reallocate:
         y_partial[node_key] = None
-        z_lb, y_hpp = solve_HPP(x_best, y_partial, Q, C, c, p, R, gamma)
+        z_lb, y_hpp = solve_HPP(x_best, y_partial, demand, capacity, cost, price, revenue, gamma)
         if z_lb < Z_best:
             return (x_best, y_hpp)
 
-    # Neither stage found a solution that can improve Z_best
     return "GLOBAL_OPTIMUM"
 
 
-def run_ils(Q, C, c, p, R, gamma, tau_max=100, time_limit=None):
+def run_ils(demand, capacity, cost, price, revenue, gamma, tau_max=100, time_limit=None):
     """Run the Iterated Local Search (ILS) algorithm.
 
     LEADER:   the government — decides which hotels to open and how to assign demand nodes.
@@ -504,14 +468,14 @@ def run_ils(Q, C, c, p, R, gamma, tau_max=100, time_limit=None):
 
     Parameters
     ----------
-    Q       : list[list[float]]  — Q[j][k]: demand of node j for room type k
-    C       : list[list[float]]  — C[i][w]: capacity of hotel i for room type w
-    c       : list[list[float]]  — c[i][j]: unit assignment cost (node j → hotel i)
-    p       : list[list[float]]  — p[i][w]: revenue per unit of room type w at hotel i
-    R       : list[float]        — R[i]: minimum revenue target for hotel i
-    gamma   : float              — misplacement penalty
-    tau_max : int                — maximum ILS iterations (default 100)
-    time_limit : float | None    — max seconds per run; None means no limit
+    Demand          : list[list[float]]  — Q[j][k]: demand of node j for room type k
+    capacity        : list[list[float]]  — C[i][w]: capacity of hotel i for room type w
+    cost            : list[list[float]]  — c[i][j]: unit assignment cost (node j → hotel i)
+    p               : list[list[float]]  — p[i][w]: revenue per unit of room type w at hotel i
+    revenue         : list[float]        — R[i]: minimum revenue target for hotel i
+    gamma           : float              — misplacement penalty
+    tau_max         : int                — maximum ILS iterations (default 100)
+    time_limit      : float | None       — max seconds per run; None means no limit
 
     Returns
     -------
@@ -520,32 +484,32 @@ def run_ils(Q, C, c, p, R, gamma, tau_max=100, time_limit=None):
     best_breakdown: tuple  — (contract_cost, assign_cost, misplace_cost)
     """
     t_start = time.time()
-    initial_sol = generate_initial_solution(Q, C, R)
+    initial_sol = generate_initial_solution(demand, capacity, revenue)
     Z_best, C_cont, C_ass, C_mis = solve_lower_level(
-        initial_sol[0], initial_sol[1], Q, C, c, p, R, gamma
+        initial_sol[0], initial_sol[1], demand, capacity, cost, price, revenue, gamma
     )
 
-    best_sol       = copy.deepcopy(initial_sol)
-    best_breakdown = (C_cont, C_ass, C_mis)
-    s_current      = copy.deepcopy(initial_sol)
+    best_sol            = copy.deepcopy(initial_sol)
+    best_breakdown      = (C_cont, C_ass, C_mis)
+    current_solution    = copy.deepcopy(initial_sol)
 
     for tau in range(tau_max):
         if time_limit is not None and (time.time() - t_start) >= time_limit:
             print(f"  Time limit reached at iteration {tau}, stopping early.")
             break
         # --- Phase 1: Intensification (Local Search) ---
-        local_x, local_y, Z_local = local_search(s_current, Q, C, c, p, R, gamma)
+        local_x, local_y, Z_local = local_search(current_solution, demand, capacity, cost, price, revenue, gamma)
         local_sol = (local_x, local_y)
 
         # --- Phase 2: Update global best (solve breakdown only when needed) ---
         if Z_local < Z_best:
-            _, c_c, c_a, c_m = solve_lower_level(local_x, local_y, Q, C, c, p, R, gamma)
+            _, c_c, c_a, c_m = solve_lower_level(local_x, local_y, demand, capacity, cost, price, revenue, gamma)
             Z_best         = Z_local
             best_sol       = copy.deepcopy(local_sol)
             best_breakdown = (c_c, c_a, c_m)
 
         # --- Phase 3: Diversification (Perturbation) ---
-        s_next = perturb(local_sol, Q, C, c, p, R, gamma, Z_best)
+        s_next = perturb(local_sol, demand, capacity, cost, price, revenue, gamma, Z_best)
 
         if s_next == "GLOBAL_OPTIMUM":
             print("Global optimum confirmed by HPP bound!")
@@ -568,20 +532,20 @@ def run_instance(file_idx, sheet_idx, output_file="ils_results.csv", time_limit=
     if not data or "demand" not in data:
         return
 
-    Q     = [row for row in data["demand"]   if len(row) > 0]
-    C     = [row for row in data["capacity"] if len(row) > 0]
-    c     = [row for row in data["cost"]     if len(row) > 0]
-    p     = [row for row in data["price"]    if len(row) > 0]
-    R     = [val for val in data["revenue"]  if val is not None]
-    gamma = data["penalty"]
+    demand      = [row for row in data["demand"]   if len(row) > 0]
+    capacity    = [row for row in data["capacity"] if len(row) > 0]
+    cost        = [row for row in data["cost"]     if len(row) > 0]
+    price       = [row for row in data["price"]    if len(row) > 0]
+    revenue     = [val for val in data["revenue"]  if val is not None]
+    gamma       = data["penalty"]
 
-    if not validate_dimensions(Q, C, c, p, R):
+    if not validate_dimensions(demand, capacity, cost, price, revenue):
         return
 
     print(f"--- Running Instance: File {file_idx}, Sheet {sheet_idx} ---")
     
     start_ils = time.time()
-    s_best, Z_best, breakdown = run_ils(Q, C, c, p, R, gamma, tau_max=20, time_limit=time_limit)
+    s_best, Z_best, breakdown = run_ils(demand, capacity, cost, price, revenue, gamma, tau_max=20, time_limit=time_limit)
     time_ils = time.time() - start_ils
 
     x_ils, _               = s_best
