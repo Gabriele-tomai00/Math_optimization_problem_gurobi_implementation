@@ -35,6 +35,7 @@ def run_instance(file_name, sheet_index):
         "mibs",
         "-Alps_instance",           mps_path,
         "-MibS_auxiliaryInfoFile",  aux_path,
+        "-Alps_timeLimit 7200"
     ]
     print(f"Lancio: {' '.join(cmd)}")
 
