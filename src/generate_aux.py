@@ -111,9 +111,12 @@ def main():
     args = parser.parse_args()
 
     if args.all:
-        for sheet_idx in range(0, 3):
-            for file_idx in range(1, 17):
-                build_and_write_aux(f"{file_idx}.xlsx", sheet_idx)
+        # for sheet_idx in range(0, 3):
+        #     for file_idx in range(1, 17):
+        #         build_and_write_aux(f"{file_idx}.xlsx", sheet_idx)
+        for file_idx in range(1, 13):
+            build_and_write_aux(f"{file_idx}.xlsx", 0)
+
     else:
         if not args.excel_file:
             parser.print_help()
