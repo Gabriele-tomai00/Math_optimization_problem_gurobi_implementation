@@ -54,20 +54,33 @@ def main():
         description=(
             "Generate MPS and AUX files, then run MibS for each instance.\n"
             "Default (test): files 1-2, sheet 0.\n"
-            "--all: all files (1-16), all sheets (0-2)."
+            "--all: all files (1-16), sheet 0.\n"
+            "--range START END: files from START to END (inclusive), sheet 0."
         )
     )
     parser.add_argument(
         "-a", "--all",
         action="store_true",
-        help="Run all instances (files 1-12).",
+        help="Run all instances (files 1-16).",
+    )
+    parser.add_argument(
+        "-r", "--range",
+        nargs=2,
+        type=int,
+        metavar=("START", "END"),
+        help="Run files from START to END inclusive (1-16).",
     )
     args = parser.parse_args()
 
-    if args.all:
-        # for sheet_idx in range(0, 3):
-            for file_idx in range(5, 16):
-                run_instance(f"{file_idx}.xlsx", 0)
+    if args.range:
+        start, end = args.range
+        if not (1 <= start <= 16 and 1 <= end <= 16 and start <= end):
+            parser.error("START and END must be between 1 and 16, with START <= END.")
+        for file_idx in range(start, end + 1):
+            run_instance(f"{file_idx}.xlsx", 0)
+    elif args.all:
+        for file_idx in range(1, 17):
+            run_instance(f"{file_idx}.xlsx", 0)
     else:
         for file_idx in range(1, 3):
             run_instance(f"{file_idx}.xlsx", 0)
