@@ -43,3 +43,46 @@ python ils.py -t --time-limit
 All outputs (CSV results and plots) are saved in the `results/` directory.
 
 A project of Eva Fumo and Gabriele Tomai
+
+
+
+### MIBS
+
+#### Install mibs (https://github.com/coin-or/MibS)
+```bash
+wget https://raw.githubusercontent.com/coin-or/coinbrew/master/coinbrew
+chmod u+x coinbrew
+./coinbrew fetch MibS@master
+./coinbrew build MibS
+```
+
+You also need the following programs:
+```bash
+sudo apt-get install -y \
+  make \
+  git \
+  wget \
+  tar \
+  patch \
+  dos2unix \
+  pkg-config \
+  g++ \
+  gfortran \
+  libblas-dev \
+  liblapack-dev \
+  libreadline-dev
+```
+
+Export the command
+```bash
+
+echo 'export LD_LIBRARY_PATH=$HOME/mibs-install/lib:$LD_LIBRARY_PATH' >> ~/.bashrc
+echo 'export PATH=$HOME/mibs-install/bin:$PATH' >> ~/.bashrc
+source ~/.bashrc
+```
+
+Run the command
+```bash
+cd src
+python3 run_mibs.py
+```
