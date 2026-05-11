@@ -439,7 +439,7 @@ def perturb(sol_from_local_search, demand, capacity, cost, price, revenue, gamma
         # At this point (x_perturbed, y_perturbed) is a feasible location-allocation scheme
         # NOW run HPP for the acceptance/screening check (Section 3.3, after the procedure)
         if y_perturbed is not None:
-            z_lb, _ = solve_HPP(x_perturbed, y_perturbed, demand, capacity, cost, price, revenue, gamma)
+            z_lb, _ = solve_HPP(x_perturbed, {}, demand, capacity, cost, price, revenue, gamma)
             if z_lb < Z_best:
                 return (x_perturbed, y_perturbed)
 
@@ -619,13 +619,13 @@ if __name__ == "__main__":
     if args.test:
         # edit here if you want to test something
         run_instance(1, 0, results_file, time_limit=instance_time_limit)
-        run_instance(1, 1, results_file, time_limit=instance_time_limit)
         run_instance(2, 0, results_file, time_limit=instance_time_limit)
-        run_instance(2, 1, results_file, time_limit=instance_time_limit)
+        run_instance(4, 0, results_file, time_limit=instance_time_limit)
+        run_instance(6, 0, results_file, time_limit=instance_time_limit)
     else:
-        for sheet_idx in range(0, 3):
-            for file_idx in range(1, 17):
-                run_instance(file_idx, sheet_idx, results_file, time_limit=instance_time_limit)
+        # for sheet_idx in range(0, 3):
+            for file_idx in range(1, 13):
+                run_instance(file_idx, 0, results_file, time_limit=instance_time_limit)
 
     if os.path.isfile(results_file):
         generate_plots_ils(results_file)
