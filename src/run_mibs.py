@@ -19,14 +19,14 @@ def run_instance(file_name, sheet_index):
     out_path = os.path.abspath(os.path.join(RESULTS_DIR, f"mibs_{stem}_sheet{sheet_index}.txt"))
 
     print(f"\n{'='*50}")
-    print(f"Istanza: {file_name}  sheet {sheet_index}")
+    print(f"Instance: {file_name}  sheet {sheet_index}")
     print(f"{'='*50}")
 
     if not build_and_write_mps(file_name, sheet_index):
-        print(f"  Skipping: generazione MPS fallita.")
+        print(f"  Skipping: MPS generation failed.")
         return False
     if not build_and_write_aux(file_name, sheet_index):
-        print(f"  Skipping: generazione AUX fallita.")
+        print(f"  Skipping: AUX generation failed.")
         return False
 
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
@@ -37,7 +37,7 @@ def run_instance(file_name, sheet_index):
         "-MibS_auxiliaryInfoFile",  aux_path,
         "-Alps_timeLimit 7200"
     ]
-    print(f"Lancio: {' '.join(cmd)}")
+    print(f"Running: {' '.join(cmd)}")
 
     result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
 
@@ -45,29 +45,29 @@ def run_instance(file_name, sheet_index):
         f.write(result.stdout)
 
     print(result.stdout, end="")
-    print(f"\nOutput salvato in {out_path}")
+    print(f"\nOutput saved to {out_path}")
     return True
 
 
 def main():
     parser = argparse.ArgumentParser(
         description=(
-            "Genera MPS e AUX, poi lancia MibS per ogni istanza.\n"
-            "Default (test): file 1-2, foglio 0.\n"
-            "--all: tutti i file (1-16), tutti i fogli (0-2)."
+            "Generate MPS and AUX files, then run MibS for each instance.\n"
+            "Default (test): files 1-2, sheet 0.\n"
+            "--all: all files (1-16), all sheets (0-2)."
         )
     )
     parser.add_argument(
         "-a", "--all",
         action="store_true",
-        help="Esegui tutte le istanze (file 1-16, fogli 0-2).",
+        help="Run all instances (files 1-12).",
     )
     args = parser.parse_args()
 
     if args.all:
-        for sheet_idx in range(0, 3):
-            for file_idx in range(1, 17):
-                run_instance(f"{file_idx}.xlsx", sheet_idx)
+        # for sheet_idx in range(0, 3):
+            for file_idx in range(1, 11):
+                run_instance(f"{file_idx}.xlsx", 0)
     else:
         for file_idx in range(1, 3):
             run_instance(f"{file_idx}.xlsx", 0)
