@@ -439,7 +439,7 @@ def perturb(sol_from_local_search, demand, capacity, cost, price, revenue, gamma
         # At this point (x_perturbed, y_perturbed) is a feasible location-allocation scheme
         # NOW run HPP for the acceptance/screening check (Section 3.3, after the procedure)
         if y_perturbed is not None:
-            z_lb, _ = solve_HPP(x_perturbed, {}, demand, capacity, cost, price, revenue, gamma)
+            z_lb, _ = solve_HPP(x_perturbed, y_perturbed, demand, capacity, cost, price, revenue, gamma)
             if z_lb < Z_best:
                 return (x_perturbed, y_perturbed)
 
@@ -546,32 +546,48 @@ def run_instance(file_idx, sheet_idx, output_file="ils_results.csv", time_limit=
 
     print(f"--- Running Instance: File {file_idx}, Sheet {sheet_idx} --- time {datetime.now(ZoneInfo('Europe/Rome')).strftime('%H:%M:%S')}")
     
-    start_ils = time.time()
-    s_best, Z_best, breakdown = run_ils(demand, capacity, cost, price, revenue, gamma, tau_max=20, time_limit=time_limit)
-    time_ils = time.time() - start_ils
+    try:
+        start_ils = time.time()
+        s_best, Z_best, breakdown = run_ils(demand, capacity, cost, price, revenue, gamma, tau_max=20, time_limit=time_limit)
+        time_ils = time.time() - start_ils
 
-    x_ils, _               = s_best
-    num_hotels             = sum(x_ils.values())
-    total_hotels           = len(x_ils)
-    hotels_ratio           = f"{num_hotels}/{total_hotels}"
-    c_contract, c_assign, c_misplace = breakdown
+        x_ils, _               = s_best
+        num_hotels             = sum(x_ils.values())
+        total_hotels           = len(x_ils)
+        hotels_ratio           = f"{num_hotels}/{total_hotels}"
+        c_contract, c_assign, c_misplace = breakdown
 
-    header = [
-        "file", "sheet", "objective", "time_sec", "time_formatted",
-        "hotels_selected", "assignment_cost",
-        "misplacement_cost", "contract_cost"
-    ]
+        header = [
+            "file", "sheet", "objective", "time_sec", "time_formatted",
+            "hotels_selected", "assignment_cost",
+            "misplacement_cost", "contract_cost"
+        ]
 
-    file_exists = os.path.isfile(output_file)
-    with open(output_file, "a", newline="") as f:
-        writer = csv.writer(f)
-        if not file_exists:
-            writer.writerow(header)
-        writer.writerow([
-            file_idx, sheet_idx, int(Z_best), int(time_ils),
-            format_time(time_ils),
-            hotels_ratio, int(c_assign), int(c_misplace), int(c_contract)
-        ])
+        file_exists = os.path.isfile(output_file)
+        with open(output_file, "a", newline="") as f:
+            writer = csv.writer(f)
+            if not file_exists:
+                writer.writerow(header)
+            writer.writerow([
+                file_idx, sheet_idx, int(Z_best), int(time_ils),
+                format_time(time_ils),
+                hotels_ratio, int(c_assign), int(c_misplace), int(c_contract)
+            ])
+
+    except gp.GurobiError as e:
+        if "too large" in str(e).lower():
+            print(f"  [SKIP] File {file_idx}, Sheet {sheet_idx}: model too large for restricted license.")
+            file_exists = os.path.isfile(output_file)
+            with open(output_file, "a", newline="") as f:
+                writer = csv.writer(f)
+                if not file_exists:
+                    writer.writerow(header)
+                writer.writerow([
+                    file_idx, sheet_idx, "TOO_LARGE", "", "", "", "", "", ""
+                ])
+        else:
+            print(f"  [ERROR] File {file_idx}, Sheet {sheet_idx}: GurobiError: {e}")
+
 
 
 if __name__ == "__main__":
