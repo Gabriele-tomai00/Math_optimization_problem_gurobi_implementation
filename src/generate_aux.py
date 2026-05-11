@@ -81,7 +81,7 @@ def build_and_write_aux(file_name, sheet_index):
     ]
 
     os.makedirs(AUX_DIR, exist_ok=True)
-    aux_path = os.path.join(AUX_DIR, f"flda_{stem}_sheet{sheet_index}.aux")
+    aux_path = os.path.join(AUX_DIR, f"flda_{stem}_sheet{sheet_index}.txt")
 
     with open(aux_path, "w", newline="\n") as f:
         f.write(f"N {len(ll_var_indices)}\n")
