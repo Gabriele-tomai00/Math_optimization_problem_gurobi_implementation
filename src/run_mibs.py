@@ -35,7 +35,7 @@ def run_instance(file_name, sheet_index):
         "mibs",
         "-Alps_instance",           mps_path,
         "-MibS_auxiliaryInfoFile",  aux_path,
-        "-Alps_timeLimit 7200"
+        "-Alps_timeLimit",          "7200"
     ]
     print(f"Running: {' '.join(cmd)}")
 
@@ -66,7 +66,7 @@ def main():
 
     if args.all:
         # for sheet_idx in range(0, 3):
-            for file_idx in range(1, 13):
+            for file_idx in range(5, 16):
                 run_instance(f"{file_idx}.xlsx", 0)
     else:
         for file_idx in range(1, 3):
