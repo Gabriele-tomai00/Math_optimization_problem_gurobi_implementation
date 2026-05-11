@@ -1,5 +1,5 @@
-file,sheet,objective,time_sec,hotels_selected,assignment_cost,misplacement_cost,contract_cost
-1,0,66653,56,10/12,47453,19200,0
-1,1,92758,42,11/12,55106,30300,7351
-2,0,158126,115,10/15,30858,51299,75968
-2,1,43418,120,12/15,34978,1399,7040
+file,sheet,objective,time_sec,time_formatted,hotels_selected,assignment_cost,misplacement_cost,contract_cost
+1,0,65641,57,57s,11/12,34524,0,31116
+2,0,132487,78,1m 19s,9/15,36199,81600,14688
+4,0,234752,146,2m 26s,18/21,51824,22800,160128
+6,0,312945,175,2m 55s,13/15,67428,228599,16918

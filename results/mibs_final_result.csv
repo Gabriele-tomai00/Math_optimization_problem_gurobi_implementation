@@ -1,0 +1,13 @@
+instance,sheet,ul_vars,ll_vars,ul_rows,ll_rows,int_ul_vars,int_ll_vars,open_hotels,branching_strategy,status,nodes_processed,nodes_partial,nodes_branched,nodes_pruned,tree_depth,cpu_time_s,wall_time_s,feasibility_time,vf_time,ub_time,vf_solves,ub_solves,cut_gen_calls,cuts_generated,best_obj,opt_gap_pct,file
+1,0,48,501,63,336,48,48,24,Linking,completed,111,67,89,1,48,0.34,0.36,0.2401,0.220948,0.003829,1,1,156,0,26726.094,0.0,mibs_1_sheet0.txt
+2,0,60,615,78,402,60,51,22,Fractional,completed,127,126,126,0,18,0.31,0.32,0.1022,0.069773,0,1,0,252,0,15130.41,0.0,mibs_2_sheet0.txt
+3,0,72,729,93,468,72,54,36,Fractional,completed,102,95,98,0,30,0.67,0.7,0.4871,0.452502,0,1,0,193,0,34939.401,0.0,mibs_3_sheet0.txt
+4,0,84,843,108,534,84,57,38,Fractional,completed,5810,5807,5808,0,40,14.94,15.63,2.6797,0.259961,0,1,0,11615,0,31179.093,0.0,mibs_4_sheet0.txt
+5,0,48,816,63,456,48,72,22,Linking,completed,352,304,328,1,48,1.19,1.26,0.3494,0.247917,0.00650191,1,1,632,0,147528.03,0.0,mibs_5_sheet0.txt
+6,0,60,1002,78,540,60,75,30,Linking,completed,267,191,229,1,60,1.59,1.62,1.0951,0.990298,0.0151851,1,1,420,0,89951.34,0.0,mibs_6_sheet0.txt
+7,0,72,1188,93,624,72,78,36,Linking,completed,359,287,323,1,72,1.54,1.58,0.7133,0.537191,0.00656486,1,1,610,0,38316.381,0.0,mibs_7_sheet0.txt
+8,0,84,1374,108,708,84,81,42,Fractional,completed,293,292,292,0,25,1.39,1.44,0.5038,0.295665,0,1,0,584,0,30457.012,0.0,mibs_8_sheet0.txt
+9,0,80,860,100,544,80,64,26,Fractional,completed,2089,2088,2088,0,34,5.24,5.51,1.0493,0.187968,0,1,0,4176,0,22444.265,0.0,mibs_9_sheet0.txt
+10,0,100,1060,124,656,100,68,36,Fractional,completed,362,361,361,0,26,1.85,1.94,0.8751,0.65665,0,1,0,722,0,18766.201,0.0,mibs_10_sheet0.txt
+11,0,120,1260,148,768,120,72,42,Fractional,completed,561,560,560,0,25,3.95,4.1,1.4537,0.994601,0,1,0,1120,0,30024.605,0.0,mibs_11_sheet0.txt
+12,0,140,1460,172,880,140,76,56,Fractional,completed,1562,1561,1561,0,31,10.66,11.0,4.2374,2.56945,0,1,0,3122,0,26781.682,0.0,mibs_12_sheet0.txt
