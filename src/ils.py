@@ -6,6 +6,8 @@ import copy
 import os
 import time
 import csv
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import gurobipy as gp
 from gurobipy import GRB
@@ -542,7 +544,7 @@ def run_instance(file_idx, sheet_idx, output_file="ils_results.csv", time_limit=
     if not validate_dimensions(demand, capacity, cost, price, revenue):
         return
 
-    print(f"--- Running Instance: File {file_idx}, Sheet {sheet_idx} ---")
+    print(f"--- Running Instance: File {file_idx}, Sheet {sheet_idx} --- time {datetime.now(ZoneInfo('Europe/Rome')).strftime('%H:%M:%S')}")
     
     start_ils = time.time()
     s_best, Z_best, breakdown = run_ils(demand, capacity, cost, price, revenue, gamma, tau_max=20, time_limit=time_limit)
