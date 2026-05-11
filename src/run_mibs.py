@@ -66,7 +66,7 @@ def main():
 
     if args.all:
         # for sheet_idx in range(0, 3):
-            for file_idx in range(1, 11):
+            for file_idx in range(1, 13):
                 run_instance(f"{file_idx}.xlsx", 0)
     else:
         for file_idx in range(1, 3):
