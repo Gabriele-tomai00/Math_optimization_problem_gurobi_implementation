@@ -1,0 +1,159 @@
+
+========================================================
+========================================================
+Welcome to MibS (Mixed Integer Bilevel Solver)
+Copyright (C) 2007-2019 Lehigh University, Scott DeNegre, Ted Ralphs
+and Sahar Tahernejad.
+All Rights Reserved.
+This software is licensed under the Eclipse Public License. Please see
+accompanying file for terms.
+Version: devel
+Build Date: May 11 2026
+========================================================
+========================================================
+==  Welcome to the Abstract Library for Parallel Search (ALPS) 
+==  Copyright 2000-2023 Lehigh University and others 
+==  All Rights Reserved. 
+==  Distributed under the Eclipse Public License 1.0 
+==  Version: 1.6.1
+==  Build Date: May 11 2026
+Alps0030I Data file: /home/gabriele/Math_optimization_problem_gurobi_implementation/mps_models/flda_2_sheet0.mps
+LL Data File: /home/gabriele/Math_optimization_problem_gurobi_implementation/aux_models/flda_2_sheet0.txt
+Number of LL Variables:   615
+
+=======================================
+Analyzing problem structure            
+=======================================
+
+Number of UL Variables: 60
+Number of LL Variables: 615
+Number of UL Rows: 78
+Number of LL Rows: 402
+Number of integer UL Variables: 60
+Number of integer LL Variables: 51
+This instance is a mixed integer problem.
+All upper level variables are binary.
+Coefficient matrix of lower level variables in upper level problem is non-negative.
+
+=======================================
+Setting parameters                     
+=======================================
+
+Default branching strategy is MibSBranchingStrategyFractional.
+Generalized no-good cut generator is on.
+solveSecondLevelWhenXYVarsInt is set.
+solveSecondLevelWhenLVarsFixed is set.
+computeBestUBWhenLVarsFixed is set.
+Linking solution pool will be used.
+
+==  Bcps Version: 0.95
+==  Blis Version: 0.95
+
+Alps0250I Starting search ...
+
+Nodes Done   Upper Bound   Lower Bound      Gap   Time Nodes Left
+         0                     13470.8               0          1
+       100                     15002.2               0        101
+       100                     15002.2               0        101
+       100                     15002.2               0        101
+       127       15130.4       15130.9    0.00%      0        126
+
+Alps0208I Search completed.
+Alps0260I Best solution found had quality 15130.41
+Alps0265I Number of nodes fully processed:          127
+Alps0266I Number of nodes partially processed:      126
+Alps0267I Number of nodes branched:                 126
+Alps0268I Number of nodes pruned before processing: 0
+Alps0270I Number of nodes left:                     0
+Alps0272I Tree depth: 18
+Alps0274I Search CPU time: 0.31 seconds
+Alps0278I Search wall-clock time: 0.32 seconds
+Blis0040I Checking feasibility took 0.1022 seconds
+Blis0053I Called MIBS cut generator 252 times, generated 0 cuts, CPU time 0.0008 seconds, current strategy 3
+Blis0063I Called Rounding heuristic 504 times, found 0 solutions, CPU time 0.0046 seconds, current strategy 2
+Blis0058I Relative optimality gap is 0.00%
+============================================
+Optimal solution:
+Cost = 15130.4
+x[2] = 1
+x[3] = 1
+x[4] = 1
+x[5] = 1
+x[6] = 1
+x[7] = 1
+x[8] = 1
+x[9] = 1
+x[12] = 1
+x[13] = 1
+x[14] = 1
+x[22] = 1
+x[25] = 1
+x[29] = 1
+x[32] = 1
+x[33] = 1
+x[37] = 1
+x[39] = 1
+x[43] = 1
+x[51] = 1
+x[56] = 1
+x[59] = 1
+y[63] = 0.223769
+y[67] = 0.110249
+y[71] = 0.639347
+y[90] = 0.295503
+y[94] = 0.00832797
+y[126] = 0.0622407
+y[130] = 0.250674
+y[153] = 0.149378
+y[157] = 0.21159
+y[161] = 0.0126685
+y[162] = 0.475207
+y[166] = 0.0114068
+y[170] = 0.558271
+y[198] = 0.302998
+y[206] = 0.0570398
+y[216] = 0.268595
+y[224] = 0.432331
+y[252] = 0.17773
+y[256] = 0.881423
+y[260] = 0.303614
+y[324] = 0.256198
+y[328] = 0.988593
+y[332] = 0.0093985
+y[369] = 0.655602
+y[373] = 0.237197
+y[377] = 0.372652
+y[396] = 0.13278
+y[400] = 0.300539
+y[404] = 0.61468
+y[427] = 248.107
+y[428] = 22.393
+y[436] = 10.893
+y[437] = 127
+y[447] = 270
+y[448] = 29
+y[449] = 14
+y[458] = 159.961
+y[460] = 112
+y[471] = 11
+y[472] = 51
+y[473] = 103.132
+y[477] = 206
+y[478] = 24
+y[479] = 59
+y[491] = 147.475
+y[530] = 150.443
+y[539] = 17.5963
+y[588] = 1
+y[589] = 1
+y[590] = 1
+y[591] = 1
+y[593] = 1
+y[594] = 1
+y[597] = 1
+y[599] = 1
+Number of problems (VF) solved = 1
+Number of problems (UB) solved = 0
+Time for solving problem (VF) = 0.069773
+Time for solving problem (UB) = 0
+============================================

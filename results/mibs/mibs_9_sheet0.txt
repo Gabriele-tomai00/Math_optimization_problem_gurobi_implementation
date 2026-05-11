@@ -1,0 +1,229 @@
+
+========================================================
+========================================================
+Welcome to MibS (Mixed Integer Bilevel Solver)
+Copyright (C) 2007-2019 Lehigh University, Scott DeNegre, Ted Ralphs
+and Sahar Tahernejad.
+All Rights Reserved.
+This software is licensed under the Eclipse Public License. Please see
+accompanying file for terms.
+Version: devel
+Build Date: May 11 2026
+========================================================
+========================================================
+==  Welcome to the Abstract Library for Parallel Search (ALPS) 
+==  Copyright 2000-2023 Lehigh University and others 
+==  All Rights Reserved. 
+==  Distributed under the Eclipse Public License 1.0 
+==  Version: 1.6.1
+==  Build Date: May 11 2026
+Alps0030I Data file: /home/gabriele/Math_optimization_problem_gurobi_implementation/mps_models/flda_9_sheet0.mps
+LL Data File: /home/gabriele/Math_optimization_problem_gurobi_implementation/aux_models/flda_9_sheet0.txt
+Number of LL Variables:   860
+
+=======================================
+Analyzing problem structure            
+=======================================
+
+Number of UL Variables: 80
+Number of LL Variables: 860
+Number of UL Rows: 100
+Number of LL Rows: 544
+Number of integer UL Variables: 80
+Number of integer LL Variables: 64
+This instance is a mixed integer problem.
+All upper level variables are binary.
+Coefficient matrix of lower level variables in upper level problem is non-negative.
+
+=======================================
+Setting parameters                     
+=======================================
+
+Default branching strategy is MibSBranchingStrategyFractional.
+Generalized no-good cut generator is on.
+solveSecondLevelWhenXYVarsInt is set.
+solveSecondLevelWhenLVarsFixed is set.
+computeBestUBWhenLVarsFixed is set.
+Linking solution pool will be used.
+
+==  Bcps Version: 0.95
+==  Blis Version: 0.95
+
+Alps0250I Starting search ...
+
+Nodes Done   Upper Bound   Lower Bound      Gap   Time Nodes Left
+         0                     16782.8               0          1
+       100                     20318.2               0        101
+       100                     20318.2               0        101
+       100                     20329.1               0        101
+       200                     20738.3               0        201
+       200                     20738.3               0        201
+       200                     20739.3               0        201
+       300                     21149.3               0        301
+       300                     21149.3               0        301
+       300                     21149.3               0        301
+       400                     21292.9               0        401
+       400                     21292.9               0        401
+       400                     21295.3               0        401
+       500                     21462.9               1        501
+       500                     21462.9               1        501
+       500                     21463.8               1        501
+       600                       21576               1        601
+       600                       21576               1        601
+       600                       21576               1        601
+       700                     21672.8               1        701
+       700                     21672.8               1        701
+       700                       21673               1        701
+       800                     21750.3               1        801
+       800                     21750.3               1        801
+       800                     21750.3               1        801
+       900                     21843.9               2        901
+       900                     21843.9               2        901
+       900                     21848.3               2        901
+      1000                       21921               2       1001
+      1000                       21921               2       1001
+      1000                     21921.7               2       1001
+      1100                     21997.5               2       1101
+      1100                     21997.5               2       1101
+      1100                     21997.5               2       1101
+      1200                     22050.7               2       1201
+      1200                     22050.7               2       1201
+      1200                     22050.7               2       1201
+      1300                     22125.9               3       1301
+      1300                     22125.9               3       1301
+      1300                     22126.1               3       1301
+      1400                     22185.1               3       1401
+      1400                     22185.1               3       1401
+      1400                     22185.4               3       1401
+      1500                       22220               3       1501
+      1500                       22220               3       1501
+      1500                       22220               3       1501
+      1600                     22256.3               3       1601
+      1600                     22256.3               3       1601
+      1600                       22257               3       1601
+      1700                     22302.2               4       1701
+      1700                     22302.2               4       1701
+      1700                     22304.3               4       1701
+      1800                     22338.1               4       1801
+      1800                     22338.1               4       1801
+      1800                     22338.1               4       1801
+      1900                     22383.6               4       1901
+      1900                     22383.6               4       1901
+      1900                     22383.6               4       1901
+      2000                     22418.4               4       2001
+      2000                     22418.4               4       2001
+      2000                     22418.4               4       2001
+      2089       22444.3       22444.4    0.00%      5       2088
+
+Alps0208I Search completed.
+Alps0260I Best solution found had quality 22444.265
+Alps0265I Number of nodes fully processed:          2089
+Alps0266I Number of nodes partially processed:      2088
+Alps0267I Number of nodes branched:                 2088
+Alps0268I Number of nodes pruned before processing: 0
+Alps0270I Number of nodes left:                     0
+Alps0272I Tree depth: 34
+Alps0274I Search CPU time: 5.24 seconds
+Alps0278I Search wall-clock time: 5.51 seconds
+Blis0040I Checking feasibility took 1.0493 seconds
+Blis0053I Called MIBS cut generator 4176 times, generated 0 cuts, CPU time 0.0151 seconds, current strategy 3
+Blis0063I Called Rounding heuristic 8352 times, found 0 solutions, CPU time 0.0927 seconds, current strategy 2
+Blis0058I Relative optimality gap is 0.00%
+============================================
+Optimal solution:
+Cost = 22444.3
+x[0] = 1
+x[2] = 1
+x[4] = 1
+x[5] = 1
+x[6] = 1
+x[8] = 1
+x[9] = 1
+x[10] = 1
+x[11] = 1
+x[12] = 1
+x[13] = 1
+x[14] = 1
+x[15] = 1
+x[19] = 1
+x[24] = 1
+x[35] = 1
+x[37] = 1
+x[40] = 1
+x[50] = 1
+x[53] = 1
+x[59] = 1
+x[60] = 1
+x[67] = 1
+x[70] = 1
+x[74] = 1
+x[77] = 1
+y[35] = 0.232744
+y[72] = 0.0254902
+y[76] = 0.212978
+y[80] = 0.484163
+y[179] = 0.355263
+y[197] = 0.460366
+y[216] = 0.32549
+y[220] = 0.442596
+y[224] = 0.515837
+y[306] = 0.455556
+y[310] = 0.382319
+y[314] = 0.0348928
+y[333] = 0.0955024
+y[337] = 1
+y[341] = 0.410061
+y[387] = 1
+y[391] = 1
+y[395] = 0.217611
+y[396] = 0.64902
+y[400] = 0.344426
+y[467] = 0.194382
+y[486] = 0.544444
+y[490] = 0.233065
+y[494] = 0.233871
+y[526] = 0.384615
+y[530] = 0.731236
+y[549] = 0.904498
+y[557] = 0.129573
+y[585] = 359
+y[586] = 2
+y[587] = 67.049
+y[602] = 112
+y[633] = 50
+y[634] = 229
+y[639] = 142
+y[640] = 28
+y[641] = 28
+y[678] = 172
+y[680] = 265.673
+y[687] = 143.855
+y[688] = 230
+y[705] = 202
+y[706] = 72
+y[708] = 39
+y[709] = 61
+y[710] = 65
+y[729] = 313
+y[730] = 191
+y[731] = 16.951
+y[750] = 195
+y[751] = 27
+y[752] = 228.327
+y[759] = 75.1455
+y[760] = 205
+y[828] = 1
+y[830] = 1
+y[832] = 1
+y[833] = 1
+y[834] = 1
+y[836] = 1
+y[837] = 1
+y[838] = 1
+y[839] = 1
+y[841] = 1
+Number of problems (VF) solved = 1
+Number of problems (UB) solved = 0
+Time for solving problem (VF) = 0.187968
+Time for solving problem (UB) = 0
+============================================

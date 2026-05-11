@@ -1,0 +1,305 @@
+
+========================================================
+========================================================
+Welcome to MibS (Mixed Integer Bilevel Solver)
+Copyright (C) 2007-2019 Lehigh University, Scott DeNegre, Ted Ralphs
+and Sahar Tahernejad.
+All Rights Reserved.
+This software is licensed under the Eclipse Public License. Please see
+accompanying file for terms.
+Version: devel
+Build Date: May 11 2026
+========================================================
+========================================================
+==  Welcome to the Abstract Library for Parallel Search (ALPS) 
+==  Copyright 2000-2023 Lehigh University and others 
+==  All Rights Reserved. 
+==  Distributed under the Eclipse Public License 1.0 
+==  Version: 1.6.1
+==  Build Date: May 11 2026
+Alps0030I Data file: /home/gabriele/Math_optimization_problem_gurobi_implementation/mps_models/flda_12_sheet0.mps
+LL Data File: /home/gabriele/Math_optimization_problem_gurobi_implementation/aux_models/flda_12_sheet0.txt
+Number of LL Variables:   1460
+
+=======================================
+Analyzing problem structure            
+=======================================
+
+Number of UL Variables: 140
+Number of LL Variables: 1460
+Number of UL Rows: 172
+Number of LL Rows: 880
+Number of integer UL Variables: 140
+Number of integer LL Variables: 76
+This instance is a mixed integer problem.
+All upper level variables are binary.
+Coefficient matrix of lower level variables in upper level problem is non-negative.
+
+=======================================
+Setting parameters                     
+=======================================
+
+Default branching strategy is MibSBranchingStrategyFractional.
+Generalized no-good cut generator is on.
+solveSecondLevelWhenXYVarsInt is set.
+solveSecondLevelWhenLVarsFixed is set.
+computeBestUBWhenLVarsFixed is set.
+Linking solution pool will be used.
+
+==  Bcps Version: 0.95
+==  Blis Version: 0.95
+
+Alps0250I Starting search ...
+
+Nodes Done   Upper Bound   Lower Bound      Gap   Time Nodes Left
+         0                     24808.6               0          1
+       100                     25763.2               0        101
+       100                     25763.2               0        101
+       100                     25768.3               0        101
+       200                       26108               1        201
+       200                       26108               1        201
+       200                     26108.4               1        201
+       300                     26229.3               1        301
+       300                     26229.3               1        301
+       300                     26230.1               1        301
+       400                     26339.3               2        401
+       400                     26339.3               2        401
+       400                     26339.4               2        401
+       500                     26407.4               2        501
+       500                     26407.4               2        501
+       500                     26407.5               2        501
+       600                     26454.1               3        601
+       600                     26454.1               3        601
+       600                     26454.2               3        601
+       700                     26495.8               3        701
+       700                     26495.8               3        701
+       700                     26496.3               3        701
+       800                     26544.7               4        801
+       800                     26544.7               4        801
+       800                       26545               4        801
+       900                     26595.2               4        901
+       900                     26595.2               4        901
+       900                     26595.6               4        901
+      1000                     26633.8               5       1001
+      1000                     26633.8               5       1001
+      1000                     26634.1               5       1001
+      1100                     26664.4               5       1101
+      1100                     26664.4               5       1101
+      1100                     26664.4               5       1101
+      1200                     26695.5               6       1201
+      1200                     26695.5               6       1201
+      1200                     26695.5               6       1201
+      1300                       26720               6       1301
+      1300                       26720               6       1301
+      1300                     26720.2               6       1301
+      1400                     26742.5               7       1401
+      1400                     26742.5               7       1401
+      1400                     26742.6               7       1401
+      1500                     26770.7               7       1501
+      1500                     26770.7               7       1501
+      1500                     26770.9               7       1501
+      1562       26781.7       26781.9    0.00%     10       1561
+
+Alps0208I Search completed.
+Alps0260I Best solution found had quality 26781.682
+Alps0265I Number of nodes fully processed:          1562
+Alps0266I Number of nodes partially processed:      1561
+Alps0267I Number of nodes branched:                 1561
+Alps0268I Number of nodes pruned before processing: 0
+Alps0270I Number of nodes left:                     0
+Alps0272I Tree depth: 31
+Alps0274I Search CPU time: 10.66 seconds
+Alps0278I Search wall-clock time: 11.00 seconds
+Blis0040I Checking feasibility took 4.2374 seconds
+Blis0053I Called MIBS cut generator 3122 times, generated 0 cuts, CPU time 0.0152 seconds, current strategy 3
+Blis0063I Called Rounding heuristic 6244 times, found 0 solutions, CPU time 0.1090 seconds, current strategy 2
+Blis0058I Relative optimality gap is 0.00%
+============================================
+Optimal solution:
+Cost = 26781.7
+x[0] = 1
+x[1] = 1
+x[2] = 1
+x[3] = 1
+x[4] = 1
+x[5] = 1
+x[6] = 1
+x[7] = 1
+x[8] = 1
+x[9] = 1
+x[10] = 1
+x[11] = 1
+x[12] = 1
+x[13] = 1
+x[14] = 1
+x[15] = 1
+x[16] = 1
+x[17] = 1
+x[18] = 1
+x[19] = 1
+x[20] = 1
+x[21] = 1
+x[22] = 1
+x[23] = 1
+x[24] = 1
+x[25] = 1
+x[26] = 1
+x[27] = 1
+x[30] = 1
+x[33] = 1
+x[39] = 1
+x[42] = 1
+x[44] = 1
+x[51] = 1
+x[52] = 1
+x[56] = 1
+x[61] = 1
+x[65] = 1
+x[68] = 1
+x[74] = 1
+x[76] = 1
+x[80] = 1
+x[84] = 1
+x[91] = 1
+x[95] = 1
+x[98] = 1
+x[101] = 1
+x[105] = 1
+x[108] = 1
+x[113] = 1
+x[118] = 1
+x[120] = 1
+x[124] = 1
+x[131] = 1
+x[132] = 1
+x[137] = 1
+y[18] = 0.102881
+y[22] = 0.222443
+y[26] = 0.120853
+y[45] = 0.588235
+y[49] = 0.515254
+y[53] = 0.219048
+y[99] = 0.137022
+y[103] = 0.457207
+y[126] = 0.341564
+y[130] = 0.326861
+y[134] = 0.236162
+y[144] = 0.0523446
+y[148] = 0.232861
+y[152] = 0.045283
+y[207] = 0.208169
+y[211] = 0.274775
+y[215] = 0.0201578
+y[216] = 0.19084
+y[220] = 0.0673759
+y[224] = 0.0716981
+y[252] = 0.19084
+y[256] = 0.0732861
+y[260] = 0.192453
+y[301] = 0.0915254
+y[305] = 0.160847
+y[333] = 0.411765
+y[337] = 0.0881356
+y[341] = 0.0825397
+y[360] = 0.00109051
+y[364] = 0.132388
+y[368] = 0.0591195
+y[414] = 0.0576132
+y[418] = 0.283172
+y[422] = 0.639295
+y[432] = 0.0697928
+y[436] = 0.125296
+y[440] = 0.0176101
+y[468] = 0.119956
+y[476] = 0.163522
+y[512] = 0.132572
+y[567] = 0.277997
+y[571] = 0.11036
+y[575] = 0.557971
+y[603] = 0.250329
+y[607] = 0.0135135
+y[611] = 0.130933
+y[630] = 0.222222
+y[634] = 0.127832
+y[665] = 0.0825397
+y[697] = 0.111864
+y[701] = 0.138624
+y[720] = 0.152672
+y[728] = 0.0762625
+y[773] = 0.22328
+y[810] = 0.27572
+y[814] = 0.0396931
+y[818] = 0.00369004
+y[828] = 0.172301
+y[836] = 0.0729268
+y[864] = 0.0338059
+y[868] = 0.191489
+y[872] = 0.125786
+y[927] = 0.126482
+y[931] = 0.144144
+y[935] = 0.290938
+y[936] = 0.0163577
+y[940] = 0.177305
+y[944] = 0.0427673
+y[985] = 0.19322
+y[989] = 0.0931217
+y[1015] = 15.5304
+y[1016] = 119.249
+y[1043] = 203
+y[1077] = 16
+y[1078] = 10
+y[1079] = 91.2182
+y[1081] = 63
+y[1107] = 177
+y[1119] = 44
+y[1148] = 27.7511
+y[1165] = 5
+y[1176] = 19
+y[1177] = 116
+y[1178] = 18.6055
+y[1211] = 27.9312
+y[1220] = 40
+y[1227] = 9
+y[1228] = 60
+y[1229] = 17
+y[1239] = 112
+y[1240] = 142
+y[1249] = 91
+y[1250] = 19.3713
+y[1263] = 210
+y[1264] = 110
+y[1278] = 14
+y[1279] = 90.4696
+y[1284] = 27
+y[1285] = 46
+y[1286] = 58.0232
+y[1319] = 90.8506
+y[1335] = 83
+y[1336] = 109
+y[1405] = 1
+y[1406] = 1
+y[1407] = 1
+y[1408] = 1
+y[1410] = 1
+y[1411] = 1
+y[1412] = 1
+y[1413] = 1
+y[1414] = 1
+y[1415] = 1
+y[1416] = 1
+y[1417] = 1
+y[1419] = 1
+y[1420] = 1
+y[1421] = 1
+y[1422] = 1
+y[1423] = 1
+y[1424] = 1
+y[1425] = 1
+y[1428] = 1
+y[1429] = 1
+y[1430] = 1
+Number of problems (VF) solved = 1
+Number of problems (UB) solved = 0
+Time for solving problem (VF) = 2.56945
+Time for solving problem (UB) = 0
+============================================
