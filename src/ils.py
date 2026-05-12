@@ -523,7 +523,7 @@ def run_ils(demand, capacity, cost, price, revenue, gamma, tau_max=100, time_lim
     return best_sol, Z_best, best_breakdown
 
 
-def run_instance(file_key, sheet_idx, output_file="ils_results.csv", time_limit=None):
+def run_ils_instance(file_key, sheet_idx, output_file="ils_results.csv", time_limit=None):
     file_name = f"{file_key}.xlsx"
     file_path = os.path.join("..", "quarantine_hotel_instances", file_name)
 
@@ -618,14 +618,14 @@ if __name__ == "__main__":
 
     if args.test:
         # edit here if you want to test something
-        run_instance(1, 0, results_file, time_limit=instance_time_limit)
-        run_instance(2, 0, results_file, time_limit=instance_time_limit)
-        run_instance(4, 0, results_file, time_limit=instance_time_limit)
-        run_instance(6, 0, results_file, time_limit=instance_time_limit)
+        run_ils_instance(1, 0, results_file, time_limit=instance_time_limit)
+        run_ils_instance(2, 0, results_file, time_limit=instance_time_limit)
+        run_ils_instance(4, 0, results_file, time_limit=instance_time_limit)
+        run_ils_instance(6, 0, results_file, time_limit=instance_time_limit)
     else:
         # for sheet_idx in range(0, 3):
             for file_idx in range(1, 13):
-                run_instance(file_idx, 0, results_file, time_limit=instance_time_limit)
+                run_ils_instance(file_idx, 0, results_file, time_limit=instance_time_limit)
 
     if os.path.isfile(results_file):
         generate_plots_ils(results_file)

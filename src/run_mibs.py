@@ -6,17 +6,19 @@ import subprocess
 
 from generate_mps import build_and_write_mps
 from generate_aux import build_and_write_aux
+from parse_mibs_results import *
 
 MPS_DIR     = os.path.join("..", "mps_models")
 AUX_DIR     = os.path.join("..", "aux_models")
 RESULTS_DIR = os.path.join("..", "results", "mibs")
 
 
-def run_instance(file_name, sheet_index):
+def run_mibs_instance(file_key, sheet_index, results_dir=RESULTS_DIR, output_csv=DEFAULT_OUTPUT_CSV, time_limit=7200):
+    file_name = f"{file_key}.xlsx"
     stem     = os.path.splitext(file_name)[0]
     mps_path = os.path.abspath(os.path.join(MPS_DIR, f"flda_{stem}_sheet{sheet_index}.mps"))
     aux_path = os.path.abspath(os.path.join(AUX_DIR, f"flda_{stem}_sheet{sheet_index}.txt"))
-    out_path = os.path.abspath(os.path.join(RESULTS_DIR, f"mibs_{stem}_sheet{sheet_index}.txt"))
+    out_path = os.path.abspath(os.path.join(results_dir, f"mibs_{stem}_sheet{sheet_index}.txt"))
 
     print(f"\n{'='*50}")
     print(f"Instance: {file_name}  sheet {sheet_index}")
@@ -29,13 +31,13 @@ def run_instance(file_name, sheet_index):
         print(f"  Skipping: AUX generation failed.")
         return False
 
-    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    os.makedirs(os.path.abspath(results_dir), exist_ok=True)
 
     cmd = [
         "mibs",
         "-Alps_instance",           mps_path,
         "-MibS_auxiliaryInfoFile",  aux_path,
-        "-Alps_timeLimit",          "7200"
+        "-Alps_timeLimit",          str(time_limit)
     ]
     print(f"Running: {' '.join(cmd)}")
 
@@ -46,6 +48,8 @@ def run_instance(file_name, sheet_index):
 
     print(result.stdout, end="")
     print(f"\nOutput saved to {out_path}")
+    parse_mibs_results(input_dir=os.path.abspath(results_dir), output_csv=output_csv)
+
     return True
 
 
@@ -77,13 +81,13 @@ def main():
         if not (1 <= start <= 16 and 1 <= end <= 16 and start <= end):
             parser.error("START and END must be between 1 and 16, with START <= END.")
         for file_idx in range(start, end + 1):
-            run_instance(f"{file_idx}.xlsx", 0)
+            run_mibs_instance(file_idx, 0)
     elif args.all:
         for file_idx in range(1, 17):
-            run_instance(f"{file_idx}.xlsx", 0)
+            run_mibs_instance(file_idx, 0)
     else:
         for file_idx in range(1, 3):
-            run_instance(f"{file_idx}.xlsx", 0)
+            run_mibs_instance(file_idx, 0)
 
 
 if __name__ == "__main__":

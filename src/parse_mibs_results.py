@@ -16,9 +16,9 @@ import glob
 
 # ── paths ──────────────────────────────────────────────────────────────────────
 
-REPO_ROOT  = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-INPUT_DIR  = os.path.join(REPO_ROOT, "results", "mibs")
-OUTPUT_CSV = os.path.join(REPO_ROOT, "results", "mibs_final_result.csv")
+REPO_ROOT         = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+INPUT_DIR         = os.path.join(REPO_ROOT, "results", "mibs")
+DEFAULT_OUTPUT_CSV = os.path.join(REPO_ROOT, "results", "mibs_final_result.csv")
 
 # ── regex patterns for each field ─────────────────────────────────────────────
 
@@ -121,26 +121,27 @@ def parse_file(path: str) -> dict:
     return row
 
 
-def main():
-    pattern = os.path.join(INPUT_DIR, "mibs_*_sheet*.txt")
+def parse_mibs_results(input_dir: str = INPUT_DIR, output_csv: str = DEFAULT_OUTPUT_CSV) -> list[dict]:
+    """Parse all MibS output files, write a CSV, and return the list of result rows."""
+    pattern = os.path.join(input_dir, "mibs_*_sheet*.txt")
     files   = sorted(glob.glob(pattern))
 
     if not files:
-        print(f"No files found in: {INPUT_DIR}")
-        return
+        print(f"No files found in: {input_dir}")
+        return []
 
     rows = [parse_file(f) for f in files]
     rows.sort(key=lambda r: (r.get("instance", 0), r.get("sheet", 0)))
 
-    os.makedirs(os.path.dirname(OUTPUT_CSV), exist_ok=True)
+    os.makedirs(os.path.dirname(output_csv), exist_ok=True)
 
-    with open(OUTPUT_CSV, "w", newline="") as f:
+    with open(output_csv, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=COLUMNS, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(rows)
 
-    print(f"Wrote {len(rows)} rows -> {OUTPUT_CSV}")
-    print(f"\n{'inst':>4}  {'UpperLevelVar':>5}  {'UowerLevelVar':>6}  {'hotels':>6}  {'nodes':>7}  {'cpu(s)':>8}  {'gap%':>6}  status")
+    print(f"Wrote {len(rows)} rows -> {output_csv}")
+    print(f"\n{'inst':>4}  {'UpperLevelVar':>5}  {'LowerLevelVar':>6}  {'hotels':>6}  {'nodes':>7}  {'cpu(s)':>8}  {'gap%':>6}  status")
     print("-" * 70)
     for r in rows:
         print(
@@ -154,6 +155,8 @@ def main():
             f"{r.get('status', '?')}"
         )
 
+    return rows
+
 
 if __name__ == "__main__":
-    main()
+    parse_mibs_results()
