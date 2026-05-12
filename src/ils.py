@@ -523,8 +523,8 @@ def run_ils(demand, capacity, cost, price, revenue, gamma, tau_max=100, time_lim
     return best_sol, Z_best, best_breakdown
 
 
-def run_instance(file_idx, sheet_idx, output_file="ils_results.csv", time_limit=None):
-    file_name = f"{file_idx}.xlsx"
+def run_instance(file_key, sheet_idx, output_file="ils_results.csv", time_limit=None):
+    file_name = f"{file_key}.xlsx"
     file_path = os.path.join("..", "quarantine_hotel_instances", file_name)
 
     if not os.path.exists(file_path):
@@ -545,7 +545,7 @@ def run_instance(file_idx, sheet_idx, output_file="ils_results.csv", time_limit=
     if not validate_dimensions(demand, capacity, cost, price, revenue):
         return
 
-    print(f"--- Running Instance: File {file_idx}, Sheet {sheet_idx} --- time {datetime.now(ZoneInfo('Europe/Rome')).strftime('%H:%M:%S')}")
+    print(f"--- Running Instance: File {file_name}, Sheet {sheet_idx} --- time {datetime.now(ZoneInfo('Europe/Rome')).strftime('%H:%M:%S')}")
     
     try:
         start_ils = time.time()
@@ -559,7 +559,7 @@ def run_instance(file_idx, sheet_idx, output_file="ils_results.csv", time_limit=
         c_contract, c_assign, c_misplace = breakdown
 
         header = [
-            "file", "sheet", "objective", "time_sec", "time_formatted",
+            "file", "sheet", "penalty", "objective", "time_sec", "time_formatted",
             "hotels_selected", "assignment_cost",
             "misplacement_cost", "contract_cost"
         ]
@@ -570,24 +570,24 @@ def run_instance(file_idx, sheet_idx, output_file="ils_results.csv", time_limit=
             if not file_exists:
                 writer.writerow(header)
             writer.writerow([
-                file_idx, sheet_idx, int(Z_best), int(time_ils),
+                file_key, sheet_idx, gamma, int(Z_best), int(time_ils),
                 format_time(time_ils),
                 hotels_ratio, int(c_assign), int(c_misplace), int(c_contract)
             ])
 
     except gp.GurobiError as e:
         if "too large" in str(e).lower():
-            print(f"  [SKIP] File {file_idx}, Sheet {sheet_idx}: model too large for restricted license.")
+            print(f"  [SKIP] File {file_name}, Sheet {sheet_idx}: model too large for restricted license.")
             file_exists = os.path.isfile(output_file)
             with open(output_file, "a", newline="") as f:
                 writer = csv.writer(f)
                 if not file_exists:
                     writer.writerow(header)
                 writer.writerow([
-                    file_idx, sheet_idx, "TOO_LARGE", "", "", "", "", "", ""
+                    file_key, sheet_idx, gamma, "TOO_LARGE", "", "", "", "", "", ""
                 ])
         else:
-            print(f"  [ERROR] File {file_idx}, Sheet {sheet_idx}: GurobiError: {e}")
+            print(f"  [ERROR] File {file_name}, Sheet {sheet_idx}: GurobiError: {e}")
 
 
 
