@@ -1,5 +1,5 @@
 # Mathematical Optimization
-## Implementation of the paper: Robust location for quarantine facilities under decentralized room assignment: A bi-level mixed-integer programming approach
+#### Implementation of the paper: Robust location for quarantine facilities under decentralized room assignment: A bi-level mixed-integer programming approach
 
 <img src="/images/for_readme.png" style="width:100%; height:auto;">
 
@@ -16,39 +16,42 @@ Each sheet is organized as follows:
 - REVENUE: a list (one entry per hotel)
 - PENALTY: single value, different for each Excel sheet
 
-<!-- ### Description
+
+### Execution
+Before running, you need a complete Python environment with the packages listed in requirements, a Gurobi license, and the mibs program (installation is explained below).
+
+#### test.py
+With test.py it is possible to run the proposed algorithms (model + ILS) on a few small instances.
+
+#### scalability.py
+It's used for the scalability analysis of the algorithms.
 
 
-### Structure -->
 
-### ILS
 
-#### Usage
+
+
+
+### For more details...
+
+#### ILS (heuristic)
 
 ```bash
+cd src
 # Full run on all 16 instances × 3 sheets, no time limit (default)
 python ils.py
 
-# Full run with 2-hour time limit
-python ils.py --time-limit
-
 # Test mode: runs a small subset of instances (edit the test block in ils.py to customize)
-python ils.py --test
-python ils.py -t
 
-# Test mode with time limit
-python ils.py -t --time-limit
+python ils.py --test
 ```
 
 All outputs (CSV results and plots) are saved in the `results/` directory.
 
-A project of Eva Fumo and Gabriele Tomai
 
+#### MIBS (exact algorithm)
 
-
-### MIBS
-
-#### Install mibs (https://github.com/coin-or/MibS)
+Install mibs (https://github.com/coin-or/MibS)
 ```bash
 wget https://raw.githubusercontent.com/coin-or/coinbrew/master/coinbrew
 chmod u+x coinbrew
@@ -86,3 +89,8 @@ Run the command
 cd src
 python3 run_mibs.py
 ```
+
+
+
+---
+A project of Eva Fumo and Gabriele Tomai
