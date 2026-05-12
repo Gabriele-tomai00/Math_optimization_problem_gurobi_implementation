@@ -141,16 +141,15 @@ def parse_mibs_results(input_dir: str = INPUT_DIR, output_csv: str = DEFAULT_OUT
         writer.writerows(rows)
 
     print(f"Wrote {len(rows)} rows -> {output_csv}")
-    print(f"\n{'inst':>4}  {'UpperLevelVar':>5}  {'LowerLevelVar':>6}  {'hotels':>6}  {'nodes':>7}  {'cpu(s)':>8}  {'gap%':>6}  status")
-    print("-" * 70)
+    print(f"\n{'inst':>4}  {'UL vars':>7}  {'LL vars':>7}  {'hotels':>6}  {'nodes':>7}  {'gap%':>6}  status")
+    print("-" * 52)
     for r in rows:
         print(
             f"{r.get('instance', '?'):>4}  "
-            f"{r.get('ul_vars', '?'):>5}  "
-            f"{r.get('ll_vars', '?'):>6}  "
+            f"{r.get('ul_vars', '?'):>7}  "
+            f"{r.get('ll_vars', '?'):>7}  "
             f"{r.get('open_hotels', '?'):>6}  "
             f"{r.get('nodes_processed', '?'):>7}  "
-            f"{r.get('cpu_time_s', '?'):>8.2f}  "
             f"{r.get('opt_gap_pct', '?'):>6}  "
             f"{r.get('status', '?')}"
         )
